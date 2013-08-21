@@ -1,0 +1,12 @@
+Source: ros-groovy-hrpsys-ros-bridge
+Section: misc
+Priority: extra
+Maintainer: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
+Build-Depends: debhelper (>= 7.0.50~), ros-groovy-actionlib, ros-groovy-camera-info-manager, ros-groovy-catkin, ros-groovy-control-msgs, ros-groovy-dynamic-reconfigure, ros-groovy-hrpsys, ros-groovy-image-transport, ros-groovy-robot-state-publisher, ros-groovy-roscpp, ros-groovy-rtmbuild, ros-groovy-sensor-msgs, ros-groovy-tf
+Homepage: http://ros.org/wiki/hrprtc_ros_bridge
+Standards-Version: 3.9.2
+
+Package: ros-groovy-hrpsys-ros-bridge
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-groovy-actionlib, ros-groovy-camera-info-manager, ros-groovy-control-msgs, ros-groovy-dynamic-reconfigure, ros-groovy-hrpsys, ros-groovy-hrpsys-tools, ros-groovy-image-transport, ros-groovy-openrtm-tools, ros-groovy-robot-state-publisher, ros-groovy-roscpp, ros-groovy-rtmbuild, ros-groovy-sensor-msgs, ros-groovy-tf
+Description: hrpsys_ros_bridge.launch : hrpsys and ROS bridge software core launch script, this script is usually included from other script.
