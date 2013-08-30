@@ -275,9 +275,22 @@ onJointTrajectory(trajectory_msgs::JointTrajectory trajectory) {
   duration.length(trajectory.points.size()) ;
 
   std::vector<std::string> joint_names = trajectory.joint_names;
+  if (joint_names.size() < joint_list.size()) {
+    ROS_ERROR_STREAM("[" << parent->getInstanceName() << "] @onJointTrajectoryAction / Error : "
+                     << "required joint_names.size() = " << joint_names.size()
+                     << " < joint_list.size() = " << joint_list.size() );
+    return;
+  }
+  for (unsigned int i = 0; i < joint_list.size(); i++) {
+    if (count(joint_names.begin(), joint_names.end(), joint_list[i]) != 1) {
+      ROS_ERROR_STREAM("[" << parent->getInstanceName() << "] @onJointTrajectoryAction / Error : "
+                       << "joint : " << joint_list[i] << " did not exist in the required trajectory.");
+      return;
+    }
+  }
 
   ROS_INFO_STREAM("[" << parent->getInstanceName() << "] @onJointTrajectoryAction (" << this->groupname << ") : trajectory.points.size() " << trajectory.points.size());
-  for (unsigned int i=0; i < trajectory.points.size(); i++) {
+  for (unsigned int i = 0; i < trajectory.points.size(); i++) {
     angles[i].length(joint_names.size());
 
     trajectory_msgs::JointTrajectoryPoint point = trajectory.points[i];
@@ -287,18 +300,9 @@ onJointTrajectory(trajectory_msgs::JointTrajectory trajectory) {
 
     parent->body->calcForwardKinematics();
 
-#if 0 // fullbody controller
-    int j = 0;
-    std::vector<hrp::Link*>::const_iterator it = parent->body->joints().begin();
-    while ( it != parent->body->joints().end() ) {
-      hrp::Link* l = ((hrp::Link*)*it);
-      angles[i][j] = l->q;
-      ++it;++j;
-    }
-#endif
     std::stringstream ss;
-    for (unsigned int j=0; j < joint_names.size(); j++) {
-      angles[i][j] = parent->body->link(joint_names[j])->q;
+    for (unsigned int j = 0; j < joint_list.size(); j++) {
+      angles[i][j] = parent->body->link(joint_list[j])->q;
       ss << " " << point.positions[j];
     }
     ROS_INFO_STREAM("[" << parent->getInstanceName() << "] @onJointTrajectoryAction (" << this->groupname << ") : time_from_start " << trajectory.points[i].time_from_start.toSec());
