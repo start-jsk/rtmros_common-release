@@ -3,6 +3,7 @@
 import roslib
 roslib.load_manifest('openrtm_tools')
 
+import OpenRTM_aist.RTM_IDL # for catkin
 import sys
 import os
 import time
@@ -155,8 +156,8 @@ def main():
         return 1
 
     if os.getenv("RTCTREE_NAMESERVERS") == None:
-        print >>sys.stderr, "[rtmlaunch] RTCTREE_NAMESERVERS is not set, use localhost"
-        nameserver = "localhost"
+        print >>sys.stderr, "[rtmlaunch] RTCTREE_NAMESERVERS is not set, use localhost:15005"
+        nameserver = "localhost:15005"
         os.environ["RTCTREE_NAMESERVERS"] = nameserver
     else:
         nameserver = os.getenv("RTCTREE_NAMESERVERS")
