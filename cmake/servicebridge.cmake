@@ -11,9 +11,14 @@ macro(rtmbuild_genbridge_init)
     file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/srv)
   endif(NOT _idllist)
 
-  execute_process(COMMAND ${_openrtm_aist_pkg_dir}/bin/rtm-config --cflags OUTPUT_VARIABLE _rtm_include_dir OUTPUT_STRIP_TRAILING_WHITESPACE)
-  execute_process(COMMAND sh -c "echo ${_rtm_include_dir} | sed 's/^-[^I]\\S*//g' | sed 's/\ -[^I]\\S*//g' | sed 's/-I//g'" OUTPUT_VARIABLE _rtm_include_dir OUTPUT_STRIP_TRAILING_WHITESPACE)
-  set(_include_dirs "${_rtm_include_dir} ${_openhrp3_pkg_dir}/share/OpenHRP-3.1/idl")
+  message("[rtmbuild_genbridge_init] rtm_include_dir: ${OPENRTM_INCLUDE_DIRS}")
+  set(_include_dirs "")
+  foreach(_dirs ${OPENRTM_INCLUDE_DIRS})
+    set(_include_dirs "${_include_dirs} ${_dirs}")
+  endforeach()
+
+  set(_include_dirs "${_include_dirs} ${_openhrp3_pkg_dir}/share/OpenHRP-3.1/idl")
+  message("[rtmbuild_genbridge_init] _include_dir: ${_include_dirs}")
 
   set(_autogen "")
   set(_autogen_msg_files "")
@@ -110,8 +115,8 @@ macro(rtmbuild_genbridge)
   rtmbuild_get_idls(_idllist)
   # rm tmp/idl2srv
   add_custom_command(OUTPUT /_tmp/idl2srv
-    COMMAND rm -fr /tmp/idl2srv/${PROJECT_NAME} DEPENDS ${_autogen})
-  add_dependencies(rtmbuild_${PROJECT_NAME}_genbridge RTMBUILD_${PROJECT_NAME}_rm_idl2srv)
+    COMMAND rm -fr /tmp/idl2srv/${PROJECT_NAME})
+  add_dependencies(rtmbuild_${PROJECT_NAME}_genidl RTMBUILD_${PROJECT_NAME}_rm_idl2srv)
   add_custom_target(RTMBUILD_${PROJECT_NAME}_rm_idl2srv ALL DEPENDS /_tmp/idl2srv ${_rtmbuild_pkg_dir}/scripts/idl2srv.py ${_rtmbuild_pkg_dir}/cmake/servicebridge.cmake)
   #
   foreach(_idl ${_idllist})
@@ -121,7 +126,7 @@ macro(rtmbuild_genbridge)
       string(REPLACE "\n" ";" _interface ${_interface})
       foreach(_comp ${_interface})
 	message("[rtmbuild_genbridge] ${_idl} -> ${_comp}ROSBridgeComp")
-        add_custom_target(${PROJECT_NAME}_${_comp}ROSBridge_cpp DEPENDS ${_autogen} ) # cpp depends on compiled idl
+        #add_custom_target(${PROJECT_NAME}_${_comp}ROSBridge_cpp DEPENDS ${_autogen} ) # cpp depends on compiled idl
 	rtmbuild_add_executable("${_comp}ROSBridgeComp" "src_gen/${_comp}ROSBridge.cpp" "src_gen/${_comp}ROSBridgeComp.cpp")
         add_dependencies(${_comp}ROSBridgeComp DEPENDS ${PROJECT_NAME}_${_comp}ROSBridge_cpp ${PROJECT_NAME}_generate_messages_cpp) # comp depends on cpp
       endforeach(_comp)
