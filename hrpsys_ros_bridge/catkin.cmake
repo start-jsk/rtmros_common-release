@@ -37,6 +37,8 @@ else()
   message(FATAL_ERROR "${hrpsys_IDL_DIR} is not found")
 endif()
 
+unset(hrpsys_LIBRARIES CACHE) # remove not to add hrpsys_LIBRARIES to hrpsys_ros_bridgeConfig.cmake
+
 # define add_message_files before rtmbuild_init
 add_message_files(FILES MotorStates.msg)
 
@@ -61,8 +63,9 @@ rtmbuild_genbridge()
 ## hrpsys ros bridge tools
 ##
 # pr2_controller_msgs is not catkinized
+string(RANDOM _random_string)
 execute_process(
-  COMMAND svn co --non-interactive --trust-server-cert https://code.ros.org/svn/wg-ros-pkg/stacks/pr2_controllers/tags/groovy/pr2_controllers_msgs /tmp/pr2_controllers_msgs
+  COMMAND svn co --non-interactive --trust-server-cert https://code.ros.org/svn/wg-ros-pkg/stacks/pr2_controllers/tags/groovy/pr2_controllers_msgs /tmp/${_random_string}/pr2_controllers_msgs
   OUTPUT_VARIABLE _download_output
   RESULT_VARIABLE _download_failed)
 message("download pr2_controllers_msgs files ${_download_output}")
@@ -70,7 +73,8 @@ if (_download_failed)
   message(FATAL_ERROR "Download pr2_controllers_msgs failed : ${_download_failed}")
 endif(_download_failed)
 execute_process(
-  COMMAND sh -c "ROS_PACKAGE_PATH=/tmp/pr2_controllers_msgs:$ROS_PACKAGE_PATH make -C /tmp/pr2_controllers_msgs"
+  COMMAND sh -c "rosdep update"
+  COMMAND sh -c "LC_ALL=en_US.UTF-8 ROS_PACKAGE_PATH=/tmp/${_random_string}/pr2_controllers_msgs:$ROS_PACKAGE_PATH make -C /tmp/${_random_string}/pr2_controllers_msgs"
   OUTPUT_VARIABLE _compile_output
   RESULT_VARIABLE _compile_failed)
 message("Compile pr2_controllers_msgs files ${_compile_output}")
@@ -78,19 +82,11 @@ if (_compile_failed)
   message(FATAL_ERROR "Compile pr2_controllers_msgs failed : ${_compile_failed}")
 endif(_compile_failed)
 
-
-#include_directories(/opt/ros/$ENV{ROS_DISTRO}/stacks/pr2_controllers/pr2_controllers_msgs/msg_gen/cpp/include)
-include_directories(/tmp/pr2_controllers_msgs/msg_gen/cpp/include)
+include_directories(/tmp/${_random_string}/pr2_controllers_msgs/msg_gen/cpp/include)
 
 rtmbuild_add_executable(HrpsysSeqStateROSBridge src/HrpsysSeqStateROSBridgeImpl.cpp src/HrpsysSeqStateROSBridge.cpp src/HrpsysSeqStateROSBridgeComp.cpp)
 rtmbuild_add_executable(ImageSensorROSBridge src/ImageSensorROSBridge.cpp src/ImageSensorROSBridgeComp.cpp)
 rtmbuild_add_executable(HrpsysJointTrajectoryBridge src/HrpsysJointTrajectoryBridge.cpp src/HrpsysJointTrajectoryBridgeComp.cpp)
-
-if(TARGET compile_hrpsys)
-  add_dependencies(HrpsysSeqStateROSBridge compile_hrpsys)
-  add_dependencies(ImageSensorROSBridge compile_hrpsys)
-  add_dependencies(HrpsysJointTrajectoryBridge compile_hrpsys)
-endif()
 
 install(PROGRAMS scripts/rtmlaunch scripts/rtmtest scripts/rtmstart.py
   DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
@@ -101,7 +97,10 @@ install(DIRECTORY scripts
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   USE_SOURCE_PERMISSIONS
   PATTERN ".svn" EXCLUDE
-  PATTERN "rtmlaunch" EXCLUDE)
+#  PATTERN "rtmlaunch" EXCLUDE   copy rtmlaunch to both share and bin for backword compatibility
+#  PATTERN "rtmtest" EXCLUDE
+#  PATTERN "rtmstart.py" EXCLUDE
+  )
 
 
 ##
