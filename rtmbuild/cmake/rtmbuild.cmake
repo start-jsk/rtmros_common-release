@@ -77,12 +77,10 @@ macro(rtmbuild_genidl)
       #COMMAND rm ${_output_cpp_dir}/${_idl} # does not work in parallel make
       WORKING_DIRECTORY ${_output_cpp_dir}
       DEPENDS ${_output_idl_hh})
-    add_custom_command(OUTPUT ${_output_stub_lib}
+    add_custom_command(OUTPUT ${_output_stub_lib} ${_output_skel_lib}
       COMMAND ${_rtmcxx_exe} `${_openrtm_aist_pkg_dir}/bin/rtm-config --cflags` -I. ${${PROJECT_NAME}_IDLLIBRARY_INCDIRS} -shared -o ${_output_stub_lib} ${_output_stub_cpp} `${_openrtm_aist_pkg_dir}/bin/rtm-config --libs` ${OPENHRP_PRIVATE_LIBRARIES}
-      DEPENDS ${_output_stub_cpp} ${_output_stub_h})
-    add_custom_command(OUTPUT ${_output_skel_lib}
       COMMAND ${_rtmcxx_exe} `${_openrtm_aist_pkg_dir}/bin/rtm-config --cflags` -I. ${${PROJECT_NAME}_IDLLIBRARY_INCDIRS} -shared -o ${_output_skel_lib} ${_output_skel_cpp} `${_openrtm_aist_pkg_dir}/bin/rtm-config --libs` ${OPENHRP_PRIVATE_LIBRARIES}
-      DEPENDS ${_output_skel_cpp} ${_output_skel_h})
+      DEPENDS ${_output_stub_cpp} ${_output_stub_h} ${_output_skel_cpp} ${_output_skel_h})
     # python
     add_custom_command(OUTPUT ${_output_idl_py}
       COMMAND mkdir -p ${_output_python_dir}
@@ -94,8 +92,8 @@ macro(rtmbuild_genidl)
   endforeach(_idl)
   ##
   add_dependencies(rtmbuild_${PROJECT_NAME}_genidl RTMBUILD_${PROJECT_NAME}_genidl)
-  add_custom_target(RTMBUILD_${PROJECT_NAME}_genidl ALL DEPENDS ${_autogen})
-  if (${CATKIN_TOPLEVEL})
+  add_custom_target(RTMBUILD_${PROJECT_NAME}_genidl DEPENDS ${_autogen})
+  if (${use_catkin})
     install(DIRECTORY ${_output_lib_dir}/ ## add / is important
       DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
       USE_SOURCE_PERMISSIONS  # set executable
@@ -118,24 +116,45 @@ macro(rtmbuild_init)
   #
   # setup pkg path
   #
+  set(use_catkin FALSE)
   if (${CATKIN_TOPLEVEL})
+    set(use_catkin TRUE)
+  endif()
+  if (${CATKIN_BUILD_BINARY_PACKAGE})
+    set(use_catkin TRUE)
+  endif()
+  if (use_catkin)
     find_package(PkgConfig)
+    # to find idl2srv.py
     if(EXISTS ${rtmbuild_SOURCE_DIR})
       set(_rtmbuild_pkg_dir ${rtmbuild_SOURCE_DIR})
     else()
       pkg_check_modules(rtmbuild rtmbuild REQUIRED)
       set(_rtmbuild_pkg_dir ${rtmbuild_PREFIX}/share/rtmbuild)
     endif()
-    if(EXISTS ${openrtm_aist_SOURCE_DIR})
-      set(_openrtm_aist_pkg_dir ${openrtm_aist_SOURCE_DIR})
-    else()
-      pkg_check_modules(openrtm_aist openrtm_aist REQUIRED)
-      set(_openrtm_aist_pkg_dir ${openrtm_aist_PREFIX}/lib/openrtm_aist)
-    endif()
-    message("[rtmbuild] set pkg_dirs")
+    pkg_check_modules(openrtm_aist openrtm-aist REQUIRED)
+    set(_openrtm_aist_pkg_dir ${openrtm_aist_PREFIX}/lib/openrtm_aist)
+    pkg_check_modules(openhrp3 openhrp3.1)
+    set(_openhrp3_pkg_dir ${openhrp3_PREFIX}/share/openhrp3)
+    message("[rtmbuild] CATKIN compile : set pkg_dirs")
     message("[rtmbuild] _rtmbuild_pkg_dir -> ${_rtmbuild_pkg_dir}")
     message("[rtmbuild] _openrtm_aist_pkg_dir -> ${_openrtm_aist_pkg_dir}")
-    find_package(message_generation) ## load add_message_files(), add_service_files()
+    message("[rtmbuild] _openhrp3_pkg_dir -> ${_openhrp3_pkg_dir}")
+    message("[rtmbuild] openrtm_aist_INCLUDE_DIRS -> ${openrtm_aist_INCLUDE_DIRS}")
+    message("[rtmbuild] openrtm_aist_LIBRARIES    -> ${openrtm_aist_LIBRARIES}")
+    message("[rtmbuild] openhrp3_INCLUDE_DIRS -> ${openhrp3_INCLUDE_DIRS}")
+    message("[rtmbuild] openhrp3_LIBRARIES    -> ${openhrp3_LIBRARIES}")
+    find_package(message_generation REQUIRED) ## load add_message_files(), add_service_files()
+    # setup openrtm include dirs
+    set(OPENRTM_INCLUDE_DIRS ${openrtm_aist_INCLUDE_DIRS})
+    set(OPENRTM_LIBRARY_DIRS ${openrtm_aist_LIBRARY_DIRS})
+    #execute_process(COMMAND ${_openrtm_aist_pkg_dir}/bin/rtm-config --cflags OUTPUT_VARIABLE OPENRTM_INCLUDE_DIRS OUTPUT_STRIP_TRAILING_WHITESPACE)
+    #execute_process(COMMAND sh -c "echo ${OPENRTM_INCLUDE_DIRS} | sed 's/^-[^I]\\S*//g' | sed 's/\ -[^I]\\S*//g' | sed 's/-I//g' | sed 's/^\ //g' | sed 's/\ /;/g' " OUTPUT_VARIABLE OPENRTM_INCLUDE_DIRS OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+    # setup openhrp3 include dirs
+    set(OPENHRP_INCLUDE_DIRS ${openhrp3_INCLUDE_DIRS})
+    set(OPENHRP_LIBRARY_DIRS ${openhrp3_LIBRARY_DIRS})
+    #
     set(ENV{PATH} ${_openrtm_aist_pkg_dir}/bin:$ENV{PATH})
     ###
     ### TODO openhrp3 stuff
@@ -151,18 +170,25 @@ macro(rtmbuild_init)
     pkg_check_modules(OPENHRP openhrp3.1)
   endif()
 
-  # for rosbridge
+  message("[rtmbuild] OPENRTM_INCLUDE_DIRS: ${OPENRTM_INCLUDE_DIRS}")
+  message("[rtmbuild] OPENHRP_INCLUDE_DIRS: ${OPENHRP_INCLUDE_DIRS}")
+  message("[rtmbuild] OPENRTM_LIBRARY_DIRS: ${OPENRTM_LIBRARY_DIRS}")
+  message("[rtmbuild] OPENHRP_LIBRARY_DIRS: ${OPENHRP_LIBRARY_DIRS}")
+
+  message("[rtmbuild] Building package ${CMAKE_SOURCE_DIR}")
+
+  # generate msg/srv file before rosbuild_init()
   rtmbuild_genbridge_init()
 
-  #
-  if (${CATKIN_TOPLEVEL})
+  if (${use_catkin})
     include_directories(${catkin_INCLUDE_DIRS})
-  else() # if (NOT ${CATKIN_TOPLEVEL}) does not work
+    message("[rtmbuild] catkin_INCLUDE_DIRS: ${catkin_INCLUDE_DIRS}")
+  else() # if (NOT ${use_catkin}) does not work
     rosbuild_init()
   endif()
-  message("[rtmbuild] Building package ${PROJECT_NAME}")
+
   add_custom_target(rtmbuild_${PROJECT_NAME}_genidl ALL)
-  add_custom_target(rtmbuild_${PROJECT_NAME}_genbridge ALL)
+  add_custom_target(rtmbuild_${PROJECT_NAME}_genbridge ALL DEPENDS rtmbuild_${PROJECT_NAME}_genidl)
   file(REMOVE ${PROJECT_SOURCE_DIR}/idl_gen/generated)
 
   file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/idl_gen/cpp)
@@ -171,7 +197,7 @@ macro(rtmbuild_init)
   list(APPEND ${PROJECT_NAME}_LIBRARY_DIRS ${PROJECT_SOURCE_DIR}/idl_gen/lib)
   list(APPEND ${PROJECT_NAME}_IDL_DIRS ${PROJECT_SOURCE_DIR}/idl)
 
-  if (${CATKIN_TOPLEVEL})
+  if (${use_catkin})
     #message(";; rospack will run....")
     #execute_process(COMMAND rospack depends-manifests openrtm_ros_bridge OUTPUT_VARIABLE ${PROJECT_NAME}_DIRS OUTPUT_STRIP_TRAILING_WHITESPACE)
     #string(REPLACE " " ";" ${PROJECT_NAME}_DIRS ${${PROJECT_NAME}_DIRS})
@@ -200,12 +226,20 @@ macro(rtmbuild_init)
       endif()
       # message("[rtmbuild] ${_dir} ${_cpp_dir}")
     endforeach(_dir)
-
-    list(APPEND ${PROJECT_NAME}_INCLUDE_DIRS ${OPENRTM_INCLUDE_DIRS})
-    list(APPEND ${PROJECT_NAME}_INCLUDE_DIRS ${OPENHRP_INCLUDE_DIRS})
-    list(APPEND ${PROJECT_NAME}_LIBRARY_DIRS ${OPENRTM_LIBRARY_DIRS})
-    list(APPEND ${PROJECT_NAME}_LIBRARY_DIRS ${OPENHRP_LIBRARY_DIRS})
   endif()
+
+  foreach(_dir ${OPENRTM_INCLUDE_DIRS})
+    list(APPEND ${PROJECT_NAME}_INCLUDE_DIRS ${_dir})
+  endforeach()
+  foreach(_dir ${OPENHRP_INCLUDE_DIRS})
+    list(APPEND ${PROJECT_NAME}_INCLUDE_DIRS ${_dir})
+  endforeach()
+  foreach(_dir ${OPENRTM_LIBRARY_DIRS})
+    list(APPEND ${PROJECT_NAME}_LIBRARY_DIRS ${_dir})
+  endforeach()
+  foreach(_dir ${OPENHRP_LIBRARY_DIRS})
+    list(APPEND ${PROJECT_NAME}_LIBRARY_DIRS ${_dir})
+  endforeach()
 
   include_directories(${${PROJECT_NAME}_INCLUDE_DIRS})
   link_directories(${${PROJECT_NAME}_LIBRARY_DIRS})
@@ -233,10 +267,10 @@ macro(rtmbuild_init)
 endmacro(rtmbuild_init)
 
 macro(rtmbuild_add_executable exe)
-  if (${CATKIN_TOPLEVEL})
+  if (${use_catkin})
     add_executable(${ARGV})
     add_dependencies(${exe} RTMBUILD_${PROJECT_NAME}_genidl ${${_package}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-    target_link_libraries(${exe} ${catkin_LIBRARIES} ${${PROJECT_NAME}_IDLLIBRARY_DIRS} )
+    target_link_libraries(${exe} ${catkin_LIBRARIES} ${openrtm_aist_LIBRARIES} ${openhrp3_LIBRARIES} ${${PROJECT_NAME}_IDLLIBRARY_DIRS} )
     install(TARGETS ${exe} RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
   else()
     rosbuild_add_executable(${ARGV})
@@ -251,10 +285,10 @@ macro(rtmbuild_add_executable exe)
 endmacro(rtmbuild_add_executable)
 
 macro(rtmbuild_add_library lib)
-  if (${CATKIN_TOPLEVEL})
+  if (${use_catkin})
     add_library(${ARGV})
     add_dependencies(${lib} RTMBUILD_${PROJECT_NAME}_genidl ${${_package}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-    target_link_libraries(${lib} ${${PROJECT_NAME}_IDLLIBRARY_DIRS})
+    target_link_libraries(${lib} ${openrtm_aist_LIBRARIES} ${openhrp3_LIBRARIES} ${${PROJECT_NAME}_IDLLIBRARY_DIRS})
     install(TARGETS ${LIB} LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
   else()
     rosbuild_add_library(${ARGV})
