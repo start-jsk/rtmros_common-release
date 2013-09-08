@@ -91,7 +91,7 @@
    (let ((srv-fnames (send self :get-ROSBridge-srv-fnames ros-pkg-name)))
      (dolist (idl (send self :get-ROSBridge-idl-fnames ros-pkg-name))
        (let ((rtc-name (pathname-name idl)))
-         (dolist (srv-name (mapcar #'pathname-name (remove-if-not #'(lambda (x) (substringp rtc-name x)) srv-fnames)))
+         (dolist (srv-name (mapcar #'pathname-name (remove-if-not #'(lambda (x) (and (substringp rtc-name x) (not (= (char x 0) (char "." 0))))) srv-fnames)))
            (let ((method-def (send self :get-ROSBridge-method-def-macro rtc-name srv-name)))
              (when method-def
                (if debug-view (pprint (macroexpand method-def)))
@@ -191,31 +191,16 @@
   (:wait-interpolation-of-group
    (groupname)
    (send self :sequenceplayerservice_waitinterpolationofgroup :gname groupname))
-  ;; just testing code
   (:add-joint-group
    (groupname jnames)
    (send self :sequenceplayerservice_addjointgroup :gname groupname :jnames jnames))
+  (:remove-joint-group
+   (groupname)
+   (send self :sequenceplayerservice_removejointgroup :gname groupname))
   (:set-joint-angles-of-group
    (groupname av tm)
    (send self :sequenceplayerservice_setjointanglesofgroup :gname groupname :jvs av :tm tm))
   (:load-pattern (basename) (send self :sequenceplayerservice_loadpattern :basename basename))
-  ;; deprecated
-  (:setBasePose
-   (&optional base-coords (tm 0.1))
-   (warning-message 1 ";; :setBasePose is deprecated!! Please use :set-base-pose !!~%")
-   (send self :set-base-pose base-coords tm))
-  (:waitInterpolationOfGroup
-   (groupname)
-   (warning-message 1 ";; :waitInterpolationOfGroup is deprecated!! Please use :wait-interpolation-of-group!!~%")
-   (send self :wait-interpolation-of-group groupname))
-  (:addJointGroup
-   (groupname jnames)
-   (warning-message 1 ";; :addJointGroup is deprecated!! Please use :add-joint-group!!~%")
-   (send self :add-joint-group groupname jnames))
-  (:setJointAnglesOfGroup
-   (groupname av tm)
-   (warning-message 1 ";; :setJointAnglesOfGroup is deprecated!! Please use :set-joint-angles-of-group !!~%")
-   (send self :set-joint-angles-of-group groupname av tm))
 #| ;; angle group sample
   (send *ri* :add-joint-group "larm" (send-all (send *robot* :larm :joint-list) :name))
   (send *ri* :set-jointangles-of-group "larm" (scale (/ pi 180.0) (send *robot* :larm :angle-vector)) 4.0)
