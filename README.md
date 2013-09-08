@@ -1,3 +1,29 @@
+## rtmros_common - 1.0.0-18
+
+User `k-okada@kokada-t430s` released the packages in the `rtmros_common` repository by running `/usr/bin/bloom-release --rosdistro groovy --track groovy rtmros_common` on `Sun, 08 Sep 2013 05:26:22 -0000`
+
+These packages were released:
+- `hrpsys_ros_bridge`
+- `hrpsys_tools`
+- `openrtm_ros_bridge`
+- `openrtm_tools`
+- `rosnode_rtc`
+- `rtmbuild`
+- `rtmros_common`
+
+Version of package(s) in repository `rtmros_common`:
+- rosdistro version: `1.0.0-17`
+- old version: `1.0.0-17`
+- new version: `1.0.0-18`
+
+Versions of tools used:
+- bloom version: `0.4.4`
+- catkin_pkg version: `0.1.19`
+- rosdep version: `0.10.21`
+- rosdistro version: `0.2.13`
+- vcstools version: `0.1.31`
+
+
 ## rtmros_common - 1.0.0-17
 
 User `k-okada@kokada-t430s` released the packages in the `rtmros_common` repository by running `/usr/bin/bloom-release --rosdistro groovy --track groovy rtmros_common` on `Sun, 08 Sep 2013 02:27:20 -0000`
