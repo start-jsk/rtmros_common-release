@@ -2,7 +2,13 @@
 
 # generate msg/srv files from idl, this will be called in rtmbuild_init
 macro(rtmbuild_genbridge_init)
-  message("[rtmbuild_genbridge_init] Generating bridge compornents from ${PROJECT_NAME}/idl")
+  if (${use_catkin}) # catkin set PROJECT_NAME on the top of catkin.cmake file
+    set(_project_name ${PROJECT_NAME})
+  else() # rtmbuild_genbridge_init to generate msg/srv files must be called before rosbuild, and rosbuild set PROJECT_NAME, so manually extract _project_name
+    get_filename_component(_project_name ${CMAKE_SOURCE_DIR} NAME)
+  endif()
+  message("[rtmbuild_genbridge_init] Generating bridge compornents from ${_project_name}/idl")
+
   rtmbuild_get_idls(_idllist)
   if(NOT _idllist)
     message("[rtmbuild_genbridge_init] WARNING: rtmbuild_genbridge() was called, but no .idl files ware found")
@@ -11,17 +17,22 @@ macro(rtmbuild_genbridge_init)
     file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/srv)
   endif(NOT _idllist)
 
-  execute_process(COMMAND ${_openrtm_aist_pkg_dir}/bin/rtm-config --cflags OUTPUT_VARIABLE _rtm_include_dir OUTPUT_STRIP_TRAILING_WHITESPACE)
-  execute_process(COMMAND sh -c "echo ${_rtm_include_dir} | sed 's/^-[^I]\\S*//g' | sed 's/\ -[^I]\\S*//g' | sed 's/-I//g'" OUTPUT_VARIABLE _rtm_include_dir OUTPUT_STRIP_TRAILING_WHITESPACE)
-  set(_include_dirs "${_rtm_include_dir} ${_openhrp3_pkg_dir}/share/OpenHRP-3.1/idl")
+  message("[rtmbuild_genbridge_init] rtm_include_dir: ${OPENRTM_INCLUDE_DIRS}")
+  set(_include_dirs "")
+  foreach(_dirs ${OPENRTM_INCLUDE_DIRS})
+    set(_include_dirs "${_include_dirs} ${_dirs}")
+  endforeach()
+
+  set(_include_dirs "${_include_dirs} ${_openhrp3_pkg_dir}/share/OpenHRP-3.1/idl")
+  message("[rtmbuild_genbridge_init] _include_dir: ${_include_dirs}")
 
   set(_autogen "")
   set(_autogen_msg_files "")
   set(_autogen_srv_files "")
   foreach(_idl ${_idllist})
     message("[rtmbuild_genbridge_init] Generate msgs/srvs from ${_idl}")
-    message("[rtmbuild_genbridge_init] ${_rtmbuild_pkg_dir}/scripts/idl2srv.py --filenames -i ${PROJECT_SOURCE_DIR}/idl/${_idl} --include-dirs=\"${_include_dirs}\"")
-    execute_process(COMMAND ${_rtmbuild_pkg_dir}/scripts/idl2srv.py --filenames -i ${PROJECT_SOURCE_DIR}/idl/${_idl} --include-dirs="${_include_dirs}" OUTPUT_VARIABLE _autogen_files OUTPUT_STRIP_TRAILING_WHITESPACE RESULT_VARIABLE _idl2srv_failed ERROR_VARIABLE _idl2srv_error)
+    message("[rtmbuild_genbridge_init] ${_rtmbuild_pkg_dir}/scripts/idl2srv.py --filenames -i ${PROJECT_SOURCE_DIR}/idl/${_idl} --include-dirs=\"${_include_dirs}\" --package-name=${_project_name}")
+    execute_process(COMMAND ${_rtmbuild_pkg_dir}/scripts/idl2srv.py --filenames -i ${PROJECT_SOURCE_DIR}/idl/${_idl} --include-dirs="${_include_dirs}" --package-name=${_project_name} OUTPUT_VARIABLE _autogen_files OUTPUT_STRIP_TRAILING_WHITESPACE RESULT_VARIABLE _idl2srv_failed ERROR_VARIABLE _idl2srv_error)
     if (_idl2srv_failed)
       message(FATAL_ERROR "idl2srv.py failed ${_idl2srv_error} ${_autogen_files}")
     endif(_idl2srv_failed)
@@ -61,8 +72,7 @@ macro(rtmbuild_genbridge_init)
       endif()
 
       list(APPEND _autogen ${_autogen_files})
-      get_filename_component(_project_name ${CMAKE_SOURCE_DIR} NAME)
-      execute_process(COMMAND ${_rtmbuild_pkg_dir}/scripts/idl2srv.py -i ${PROJECT_SOURCE_DIR}/idl/${_idl} --include-dirs=${_include_dirs} --tmpdir=/tmp/idl2srv/${_project_name} RESULT_VARIABLE _idl2srv_failed ERROR_VARIABLE _idl2srv_error)
+      execute_process(COMMAND ${_rtmbuild_pkg_dir}/scripts/idl2srv.py -i ${PROJECT_SOURCE_DIR}/idl/${_idl} --include-dirs=${_include_dirs} --tmpdir=/tmp/idl2srv/${_project_name} --package-name=${_project_name} RESULT_VARIABLE _idl2srv_failed ERROR_VARIABLE _idl2srv_error)
       if (_idl2srv_failed)
         message(FATAL_ERROR "idl2srv.py failed ${_idl2srv_error}")
       endif(_idl2srv_failed)
@@ -71,20 +81,20 @@ macro(rtmbuild_genbridge_init)
     set(_generated_msgs_from_idl "")
   endforeach(_idl)
 
-  if (${CATKIN_TOPLEVEL})
+  if (${use_catkin})
     # generated .h file
-    string(REPLACE ";" " ${CATKIN_DEVEL_PREFIX}/include/${PROJECT_NAME}/" _autogen_srv_h_files  "${CATKIN_DEVEL_PREFIX}/include/${PROJECT_NAME}/${_autogen_srv_files}")
+    string(REPLACE ";" " ${CATKIN_DEVEL_PREFIX}/include/${_project_name}/" _autogen_srv_h_files  "${CATKIN_DEVEL_PREFIX}/include/${_project_name}/${_autogen_srv_files}")
     string(REPLACE ".srv" ".h" _autogen_srv_h_files  ${_autogen_srv_h_files})
-    string(REPLACE ";" " ${CATKIN_DEVEL_PREFIX}/include/${PROJECT_NAME}/" _autogen_msg_h_files  "${CATKIN_DEVEL_PREFIX}/include/${PROJECT_NAME}/${_autogen_msg_files}")
+    string(REPLACE ";" " ${CATKIN_DEVEL_PREFIX}/include/${_project_name}/" _autogen_msg_h_files  "${CATKIN_DEVEL_PREFIX}/include/${_project_name}/${_autogen_msg_files}")
     string(REPLACE ".srv" ".h" _autogen_msg_h_files  ${_autogen_msg_h_files})
     # message generation
-    foreach(${PROJECT_NAME}_msg_files ${${PROJECT_NAME}_MESSAGE_FILES})
-      get_filename_component(${PROJECT_NAME}_msg_file ${${PROJECT_NAME}_msg_files} NAME)
-      list(APPEND _autogen_msg_files ${${PROJECT_NAME}_msg_file})
+    foreach(${_project_name}_msg_files ${${_project_name}_MESSAGE_FILES})
+      get_filename_component(${_project_name}_msg_file ${${_project_name}_msg_files} NAME)
+      list(APPEND _autogen_msg_files ${${_project_name}_msg_file})
     endforeach()
-    foreach(${PROJECT_NAME}_srv_files ${${PROJECT_NAME}_SERVICE_FILES})
-      get_filename_component(${PROJECT_NAME}_srv_file ${${PROJECT_NAME}_srv_files} NAME)
-      list(APPEND _autogen_srv_files ${${PROJECT_NAME}_srv_files)
+    foreach(${_project_name}_srv_files ${${_project_name}_SERVICE_FILES})
+      get_filename_component(${_project_name}_srv_file ${${_project_name}_srv_files} NAME)
+      list(APPEND _autogen_srv_files ${${_project_name}_srv_file})
     endforeach()
     message("[rosbuild_genbridge] msg: ${_autogen_msg_files}")
     message("[rosbuild_genbridge] srv: ${_autogen_srv_files}")
@@ -102,26 +112,29 @@ macro(rtmbuild_genbridge_init)
 endmacro(rtmbuild_genbridge_init)
 
 macro(rtmbuild_genbridge)
-  if (${CATKIN_TOPLEVEL})
-  else() # if (NOT ${CATKIN_TOPLEVEL}) does not work
+  if (${use_catkin})
+  else() # if (NOT ${use_catkin}) does not work
+    message("[rtmbuild_genbridge] call rosbuild_genmsg/rosbuild_gensrv")
     rosbuild_genmsg()
     rosbuild_gensrv()
+    message("[rtmbuild_genbridge] call rosbuild_genmsg ${_msglist}")
+    message("[rtmbuild_genbridge] call rosbuild_gensrv ${_srvlist}")
   endif()
   rtmbuild_get_idls(_idllist)
   # rm tmp/idl2srv
   add_custom_command(OUTPUT /_tmp/idl2srv
-    COMMAND rm -fr /tmp/idl2srv/${PROJECT_NAME} DEPENDS ${_autogen})
-  add_dependencies(rtmbuild_${PROJECT_NAME}_genbridge RTMBUILD_${PROJECT_NAME}_rm_idl2srv)
+    COMMAND rm -fr /tmp/idl2srv/${PROJECT_NAME})
+  add_dependencies(rtmbuild_${PROJECT_NAME}_genidl RTMBUILD_${PROJECT_NAME}_rm_idl2srv)
   add_custom_target(RTMBUILD_${PROJECT_NAME}_rm_idl2srv ALL DEPENDS /_tmp/idl2srv ${_rtmbuild_pkg_dir}/scripts/idl2srv.py ${_rtmbuild_pkg_dir}/cmake/servicebridge.cmake)
   #
   foreach(_idl ${_idllist})
-    execute_process(COMMAND ${_rtmbuild_pkg_dir}/scripts/idl2srv.py --interfaces -i ${PROJECT_SOURCE_DIR}/idl/${_idl} --include-dirs="${_include_dirs}" OUTPUT_VARIABLE _interface
+    execute_process(COMMAND ${_rtmbuild_pkg_dir}/scripts/idl2srv.py --interfaces -i ${PROJECT_SOURCE_DIR}/idl/${_idl} --include-dirs="${_include_dirs}" --package-name=${PROJECT_NAME} OUTPUT_VARIABLE _interface
       OUTPUT_STRIP_TRAILING_WHITESPACE)
     if(_interface)
       string(REPLACE "\n" ";" _interface ${_interface})
       foreach(_comp ${_interface})
 	message("[rtmbuild_genbridge] ${_idl} -> ${_comp}ROSBridgeComp")
-        add_custom_target(${PROJECT_NAME}_${_comp}ROSBridge_cpp DEPENDS ${_autogen} ) # cpp depends on compiled idl
+        #add_custom_target(${PROJECT_NAME}_${_comp}ROSBridge_cpp DEPENDS ${_autogen} ) # cpp depends on compiled idl
 	rtmbuild_add_executable("${_comp}ROSBridgeComp" "src_gen/${_comp}ROSBridge.cpp" "src_gen/${_comp}ROSBridgeComp.cpp")
         add_dependencies(${_comp}ROSBridgeComp DEPENDS ${PROJECT_NAME}_${_comp}ROSBridge_cpp ${PROJECT_NAME}_generate_messages_cpp) # comp depends on cpp
       endforeach(_comp)
