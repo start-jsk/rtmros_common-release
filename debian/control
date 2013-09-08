@@ -1,0 +1,12 @@
+Source: ros-groovy-openrtm-ros-bridge
+Section: misc
+Priority: extra
+Maintainer: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
+Build-Depends: debhelper (>= 7.0.50~), ros-groovy-catkin, ros-groovy-openrtm-tools, ros-groovy-roscpp, ros-groovy-rostest, ros-groovy-rtmbuild
+Homepage: http://ros.org/wiki/openrtm_ros_bridge
+Standards-Version: 3.9.2
+
+Package: ros-groovy-openrtm-ros-bridge
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-groovy-openrtm-tools, ros-groovy-roscpp
+Description: openrtm_ros_bridge
