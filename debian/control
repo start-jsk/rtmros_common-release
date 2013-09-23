@@ -1,0 +1,12 @@
+Source: ros-hydro-hrpsys-ros-bridge
+Section: misc
+Priority: extra
+Maintainer: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
+Build-Depends: debhelper (>= 7.0.50~), python-rosdep, ros-hydro-actionlib, ros-hydro-camera-info-manager, ros-hydro-catkin, ros-hydro-control-msgs, ros-hydro-diagnostic-msgs, ros-hydro-dynamic-reconfigure, ros-hydro-hrpsys, ros-hydro-image-transport, ros-hydro-mk, ros-hydro-robot-state-publisher, ros-hydro-rosbuild, ros-hydro-roscpp, ros-hydro-roslang, ros-hydro-rtmbuild, ros-hydro-sensor-msgs, ros-hydro-tf, subversion
+Homepage: http://ros.org/wiki/hrprtc_ros_bridge
+Standards-Version: 3.9.2
+
+Package: ros-hydro-hrpsys-ros-bridge
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, python-psutil, ros-hydro-actionlib, ros-hydro-camera-info-manager, ros-hydro-control-msgs, ros-hydro-diagnostic-msgs, ros-hydro-dynamic-reconfigure, ros-hydro-hrpsys, ros-hydro-hrpsys-tools, ros-hydro-image-transport, ros-hydro-openrtm-tools, ros-hydro-robot-state-publisher, ros-hydro-roscpp, ros-hydro-rtmbuild, ros-hydro-sensor-msgs, ros-hydro-tf
+Description: hrpsys_ros_bridge package provides modules that work as &quot;bridge&quot; between OpenRTM-based controller hrpsys and ROS.
