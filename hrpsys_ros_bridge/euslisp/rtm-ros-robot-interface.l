@@ -463,10 +463,8 @@
    (send self :autobalancerservice_goPos :x xx :y yy :th th))
   (:go-pos
    (xx yy th)
-   (send self :start-auto-balancer)
    (send self :go-pos-no-wait xx yy th)
-   (send self :wait-foot-steps)
-   (send self :stop-auto-balancer))
+   (send self :wait-foot-steps))
   (:get-foot-step-param
    ()
    (send (send self :autobalancerservice_getfootstepparam) :i_param)
@@ -488,18 +486,14 @@
      ))
   (:set-foot-steps
    (fs)
-   (send self :start-auto-balancer)
    (send self :set-foot-steps-no-wait fs)
-   (send self :wait-foot-steps)
-   (send self :stop-auto-balancer))
+   (send self :wait-foot-steps))
   (:go-velocity
    (vx vy vth)
-   (send self :start-auto-balancer)
    (send self :autobalancerservice_goVelocity :vx vx :vy vy :vth vth))
   (:go-stop
    ()
-   (send self :autobalancerservice_goStop)
-   (send self :stop-auto-balancer))
+   (send self :autobalancerservice_goStop))
   (:wait-foot-steps
    ()
    (send self :autobalancerservice_waitFootSteps))
@@ -608,3 +602,11 @@
    (send self :stabilizerservice_stopstabilizer)
    )
   )
+
+(defun print-abc-parameter-conf-from-robot
+  (rb)
+  (format t "abc_end_effectors:")
+  (dolist (l '(:rarm :larm :rleg :lleg))
+    (let ((rl (send (send (send rb l :root-link) :parent) :joint)))
+      (format t " ~A,~A,~A," l (send (send (send rb l :end-coords :parent) :joint) :name) (if rl (send rl :name) "WAIST"))))
+  (format t "~%"))
