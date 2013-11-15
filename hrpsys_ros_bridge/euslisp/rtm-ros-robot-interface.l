@@ -199,7 +199,7 @@
    (unless base-coords
      (setq base-coords (send robot :worldcoords)))
    (send self :sequenceplayerservice_setbasepos :pos (scale 0.001 (send base-coords :pos)) :tm tm)
-   (send self :sequenceplayerservice_setbaserpy :rpy (coerce (car (send base-coords :rpy-angle)) float-vector) :tm tm))
+   (send self :sequenceplayerservice_setbaserpy :rpy (coerce (reverse (car (send base-coords :rpy-angle))) float-vector) :tm tm))
   (:wait-interpolation-of-group
    (groupname)
    (send self :sequenceplayerservice_waitinterpolationofgroup :gname groupname))
@@ -434,7 +434,7 @@
                            (norm (scale (/ 1.0 (length abs-v)) (reduce #'v+ abs-v)))
                            (if (eq f/m :force) "N" "Nm")
                            (norm
-                            (scale (/ 1.0 5.0)
+                            (scale (/ 1.0 itr)
                                    (reduce #'v+
                                            (mapcar #'(lambda (x) (send self :state (read-from-string (format nil ":absolute-~A-vector" (string-downcase f/m))) alimb))
                                                    (make-list itr)))))
