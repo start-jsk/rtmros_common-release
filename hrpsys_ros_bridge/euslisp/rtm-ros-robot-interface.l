@@ -178,6 +178,18 @@
        (send self :imucoords))
       (t
        (send-super* :state args))))
+  ;; Calculate zmp from state [mm]
+  ;; example ;; (progn (send *ri* :go-velocity 0 0 0) (objects (list (*ri* . robot))) (do-until-key (let ((zmp (send *ri* :calc-zmp-from-state))) (send *irtviewer* :draw-objects :flush nil) (send zmp :draw-on :flush t :size 300))))
+  (:calc-zmp-from-state
+   (&key (wrt :world))
+   ;; :wrt is :local => calc local zmp for (*ri* . robot)'s root-link coords
+   ;; :wrt is :world => calc world zmp for (*ri* . robot)
+   (send self :state)
+   (send robot :calc-zmp-from-forces-moments
+         (mapcar #'(lambda (x) (send self :force-vector x)) '(:rleg :lleg))
+         (mapcar #'(lambda (x) (send self :moment-vector x)) '(:rleg :lleg))
+         :wrt wrt)
+   )
   )
 
 ;; SequencePlayerService
@@ -187,7 +199,7 @@
    (unless base-coords
      (setq base-coords (send robot :worldcoords)))
    (send self :sequenceplayerservice_setbasepos :pos (scale 0.001 (send base-coords :pos)) :tm tm)
-   (send self :sequenceplayerservice_setbaserpy :rpy (coerce (car (send base-coords :rpy-angle)) float-vector) :tm tm))
+   (send self :sequenceplayerservice_setbaserpy :rpy (coerce (reverse (car (send base-coords :rpy-angle))) float-vector) :tm tm))
   (:wait-interpolation-of-group
    (groupname)
    (send self :sequenceplayerservice_waitinterpolationofgroup :gname groupname))
@@ -422,7 +434,7 @@
                            (norm (scale (/ 1.0 (length abs-v)) (reduce #'v+ abs-v)))
                            (if (eq f/m :force) "N" "Nm")
                            (norm
-                            (scale (/ 1.0 5.0)
+                            (scale (/ 1.0 itr)
                                    (reduce #'v+
                                            (mapcar #'(lambda (x) (send self :state (read-from-string (format nil ":absolute-~A-vector" (string-downcase f/m))) alimb))
                                                    (make-list itr)))))
@@ -451,10 +463,8 @@
    (send self :autobalancerservice_goPos :x xx :y yy :th th))
   (:go-pos
    (xx yy th)
-   (send self :start-auto-balancer)
    (send self :go-pos-no-wait xx yy th)
-   (send self :wait-foot-steps)
-   (send self :stop-auto-balancer))
+   (send self :wait-foot-steps))
   (:get-foot-step-param
    ()
    (send (send self :autobalancerservice_getfootstepparam) :i_param)
@@ -476,18 +486,14 @@
      ))
   (:set-foot-steps
    (fs)
-   (send self :start-auto-balancer)
    (send self :set-foot-steps-no-wait fs)
-   (send self :wait-foot-steps)
-   (send self :stop-auto-balancer))
+   (send self :wait-foot-steps))
   (:go-velocity
    (vx vy vth)
-   (send self :start-auto-balancer)
    (send self :autobalancerservice_goVelocity :vx vx :vy vy :vth vth))
   (:go-stop
    ()
-   (send self :autobalancerservice_goStop)
-   (send self :stop-auto-balancer))
+   (send self :autobalancerservice_goStop))
   (:wait-foot-steps
    ()
    (send self :autobalancerservice_waitFootSteps))
@@ -596,3 +602,11 @@
    (send self :stabilizerservice_stopstabilizer)
    )
   )
+
+(defun print-abc-parameter-conf-from-robot
+  (rb)
+  (format t "abc_end_effectors:")
+  (dolist (l '(:rarm :larm :rleg :lleg))
+    (let ((rl (send (send (send rb l :root-link) :parent) :joint)))
+      (format t " ~A,~A,~A," l (send (send (send rb l :end-coords :parent) :joint) :name) (if rl (send rl :name) "WAIST"))))
+  (format t "~%"))
