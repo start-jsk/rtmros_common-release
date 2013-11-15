@@ -2,9 +2,16 @@
 
 # This program is used to connect RosBridge sensor ports with simulator or RobotHardware sensor ports based on ModelLoader information.
 
-import roslib; roslib.load_manifest('hrpsys')
+try: # catkin does not requires load_manifest
+    import hrpsys
+except:
+    import roslib; roslib.load_manifest('hrpsys')
+    import hrpsys
+
 import OpenRTM_aist.RTM_IDL # for catkin
-from hrpsys_config import *
+
+from hrpsys.hrpsys_config import *
+import OpenHRP
 
 program_name = '[sensor_ros_bridge_connect.py] '
 
@@ -22,7 +29,7 @@ def connecSensorRosBridgePort(url, rh, bridge, vs, afs):
     if vs != None:
         for vfp in filter(lambda x : str.find(x, 'v') >= 0 and str.find(x, 'sensor') >= 0, vs.ports.keys()):
             print program_name, "connect ", vfp, vs.port(vfp).get_port_profile().name, bridge.port(vfp).get_port_profile().name
-            connectPorts(vs.port(vfp), bridge.port(vfp))
+            connectPorts(vs.port(vfp), bridge.port(vfp), "new")
 
 def initSensorRosBridgeConnection(url, simulator_name, rosbridge_name, managerhost):
     hcf.waitForModelLoader()
