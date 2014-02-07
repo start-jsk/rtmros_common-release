@@ -121,6 +121,7 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridge::onInitialize() {
   for (unsigned int i=0; i<m_rsforceIn.size(); i++){
     fsensor_pub[i] = nh.advertise<geometry_msgs::WrenchStamped>(m_rsforceName[i], 10);
   }
+  zmp_pub = nh.advertise<geometry_msgs::PointStamped>("/zmp", 10);
 
   return RTC::RTC_OK;
 }
@@ -255,7 +256,11 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridge::onExecute(RTC::UniqueId ec_id)
       } else{
           mot_states.header.stamp = tm_on_execute;
       }
-      //for ( unsigned int i = 0; i < m_servoState.data.length() ; i++ ) std::cerr << m_servoState.data[i] << " "; std::cerr << std::endl;
+      if (m_servoState.data.length() != body->joints().size()){
+        std::cerr << __PRETTY_FUNCTION__ << "m_servoState.data.length() = " << m_servoState.data.length() << std::endl;
+        std::cerr << __PRETTY_FUNCTION__ << "body->joints().size() = " << body->joints().size() << std::endl;
+        for ( unsigned int i = 0; i < body->joints().size() ; i++ ) std::cerr << body->joint(i)->name << " "; std::cerr << std::endl;
+      }
       assert(m_servoState.data.length() == body->joints().size());
       int joint_size = body->joints().size();
       mot_states.name.resize(joint_size);
@@ -511,7 +516,14 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridge::onExecute(RTC::UniqueId ec_id)
             not_nan = false;
     }
     if (not_nan) {
-        br.sendTransform(tf::StampedTransform(inv, base_time, "gyrometer", "imu_floor"));
+      std::map<std::string, SensorInfo>::const_iterator its = sensor_info.begin();
+      while ( its != sensor_info.end() ) {
+        if ( (*its).second.type_name == "RateGyro" ) {
+          br.sendTransform(tf::StampedTransform(inv, base_time, (*its).first, "imu_floor"));
+          break;
+        }
+        ++its;
+      }
     } else {
         ROS_ERROR_STREAM("[" << getInstanceName() << "] " << "nan value detected in imu_floor! (input: r,p,y="
                          << m_baseRpy.data.r << ","
@@ -549,6 +561,28 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridge::onExecute(RTC::UniqueId ec_id)
 	}
     }
   } // end: publish forces sonsors
+
+  if ( m_rszmpIn.isNew() ) {
+    try {
+      m_rszmpIn.read();
+      //ROS_DEBUG_STREAM("[" << getInstanceName() << "] @onExecute " << m_rsforceName[i] << " size = " << m_rsforce[i].data.length() );
+      geometry_msgs::PointStamped zmpv;
+      if ( use_hrpsys_time ) {
+        zmpv.header.stamp = ros::Time(m_rszmp.tm.sec, m_rszmp.tm.nsec);
+      }else{
+        zmpv.header.stamp = tm_on_execute;
+      }
+      zmpv.header.frame_id = rootlink_name;
+      zmpv.point.x = m_rszmp.data.x;
+      zmpv.point.y = m_rszmp.data.y;
+      zmpv.point.z = m_rszmp.data.z;
+      zmp_pub.publish(zmpv);
+    }
+    catch(const std::runtime_error &e)
+      {
+        ROS_ERROR_STREAM("[" << getInstanceName() << "] " << e.what());
+      }
+  }
 
   //
   return RTC::RTC_OK;

@@ -29,24 +29,25 @@ macro(get_option_from_args _option_ret _option_name _separator _quater _ret_add_
     if ("${anarg}" STREQUAL "${_option_name}")
       if (NOT "${_tmp_option}" STREQUAL "")
         list(GET _arg_list 1 _tmp_option2)
-        set(_tmp_option "${_tmp_option}\ ${_separator}${_quater}${_tmp_option2}${_quater}")
+        set(_tmp_option "${_tmp_option}\ ${_separator}${_tmp_option2}")
       else(NOT "${_tmp_option}" STREQUAL "")
         list(GET _arg_list 1 _tmp_option2)
-        set(_tmp_option "${_separator}${_quater}${_tmp_option2}${_quater}")
+        set(_tmp_option "${_separator}${_tmp_option2}")
       endif (NOT "${_tmp_option}" STREQUAL "")
     endif ("${anarg}" STREQUAL "${_option_name}")
     list(REMOVE_AT _arg_list 0)
   endforeach(anarg ${_arg_list2})
   if (NOT "${_tmp_option}" STREQUAL "" AND NOT "${_ret_add_str}" STREQUAL "")
-    set(_tmp_option "${_ret_add_str}${_tmp_option}")
+    set(_tmp_option "${_ret_add_str}\"${_tmp_option}\"")
   endif (NOT "${_tmp_option}" STREQUAL "" AND NOT "${_ret_add_str}" STREQUAL "")
   set(${_option_ret} "${_tmp_option}")
 endmacro(get_option_from_args _option_ret _option_name)
 
-macro(get_conf_file_option _conf_file_option_ret _robothardware_conf_file_option_ret _conf_dt_option_ret)
+macro(get_conf_file_option _conf_file_option_ret _robothardware_conf_file_option_ret _conf_dt_option_ret _simulation_timestep_option_ret)
   get_option_from_args(${_conf_file_option_ret} "--conf-file-option" "--conf-file-option\ " ' "CONF_FILE_OPTION:=" ${ARGV})
   get_option_from_args(${_robothardware_conf_file_option_ret} "--robothardware-conf-file-option" "\ --robothardware-conf-file-option\ " ' "ROBOTHARDWARE_CONF_FILE_OPTION:=" ${ARGV})
   get_option_from_args(${_conf_dt_option_ret} "--conf-dt-option" "\ --dt\ " ' "CONF_DT_OPTION:=" ${ARGV})
+  get_option_from_args(${_simulation_timestep_option_ret} "--simulation-timestep-option" "\ --timestep\ " ' "SIMULATION_TIMESTEP_OPTION:=" ${ARGV})
 endmacro()
 
 macro(get_proj_file_root_option _proj_file_root_option_ret)
@@ -71,10 +72,11 @@ macro(compile_openhrp_model wrlfile)
     set(_conf_file_option "")
     set(_robothardware_conf_file_option "")
     set(_conf_dt_option "")
+    set(_simulation_timestep_option "")
   else()
     set(_name ${ARGV1})
     get_export_collada_option(_export_collada_option ${ARGV})
-    get_conf_file_option(_conf_file_option _robothardware_conf_file_option _conf_dt_option ${ARGV})
+    get_conf_file_option(_conf_file_option _robothardware_conf_file_option _conf_dt_option _simulation_timestep_option ${ARGV})
   endif()
   set(_daefile "${_workdir}/${_name}.dae")
   set(_xmlfile "${_workdir}/${_name}.xml")
@@ -125,7 +127,7 @@ macro(compile_openhrp_model wrlfile)
     rosbuild_find_ros_package(openhrp3)
     set(_export_collada_exe ${openhrp3_PACKAGE_PATH}/bin/export-collada)
   else()
-    #set(openhrp3_PACKAGE_PATH ${openhrp3_SOURCE_DIR})
+    set(openhrp3_PACKAGE_PATH ${openhrp3_SOURCE_DIR})
     set(_export_collada_exe ${CATKIN_DEVEL_PREFIX}/lib/openhrp3/export-collada)
   endif()
   if(EXISTS ${_export_collada_exe})
@@ -145,7 +147,6 @@ macro(compile_openhrp_model wrlfile)
     rosbuild_find_ros_package(hrpsys)
     rosbuild_find_ros_package(hrpsys_tools)
   else()
-    find_package(hrpsys)
     find_package(hrpsys_tools)
     if(EXISTS ${hrpsys_SOURCE_DIR})
       set(hrpsys_PACKAGE_PATH ${hrpsys_SOURCE_DIR})
@@ -167,12 +168,14 @@ macro(compile_openhrp_model wrlfile)
   endif()
   add_custom_command(OUTPUT ${_xmlfile}
     COMMAND ${_rtm_naming_exe} ${_corba_port}
-    COMMAND rostest -t ${hrpsys_tools_PACKAGE_PATH}/launch/_gen_project.launch CORBA_PORT:=${_corba_port} INPUT:=${wrlfile} OUTPUT:=${_xmlfile} ${_conf_file_option} ${_robothardware_conf_file_option} ${_conf_dt_option}
+    COMMAND echo 'ROS_PACKAGE_PATH=${hrpsys_tools_PACKAGE_PATH}:${hrpsys_PACKAGE_PATH}:${openhrp3_PACKAGE_PATH}:$ENV{ROS_PACKAGE_PATH} rostest -t ${hrpsys_tools_PACKAGE_PATH}/launch/_gen_project.launch CORBA_PORT:=${_corba_port} INPUT:=${wrlfile} OUTPUT:=${_xmlfile} ${_conf_file_option} ${_robothardware_conf_file_option} ${_conf_dt_option} ${_simulation_timestep_option}' > /tmp/_gen_project_${_name}_xml.sh
+    COMMAND sh /tmp/_gen_project_${_name}_xml.sh
     COMMAND pkill -KILL -f "omniNames -start ${_corba_port}" || echo "no process to kill"
     DEPENDS ${daefile} ${_gen_project_dep_files})
   add_custom_command(OUTPUT ${_xmlfile_nosim}
     COMMAND ${_rtm_naming_exe} ${_corba_port}
-    COMMAND rostest -t ${hrpsys_tools_PACKAGE_PATH}/launch/_gen_project.launch CORBA_PORT:=${_corba_port} INPUT:=${wrlfile} OUTPUT:=${_xmlfile_nosim} INTEGRATE:=false ${_conf_file_option} ${_robothardware_conf_file_option} ${_conf_dt_option}
+    COMMAND echo 'ROS_PACKAGE_PATH=${hrpsys_tools_PACKAGE_PATH}:${hrpsys_PACKAGE_PATH}:${openhrp3_PACKAGE_PATH}:$ENV{ROS_PACKAGE_PATH} rostest -t ${hrpsys_tools_PACKAGE_PATH}/launch/_gen_project.launch CORBA_PORT:=${_corba_port} INPUT:=${wrlfile} OUTPUT:=${_xmlfile_nosim} INTEGRATE:=false ${_conf_file_option} ${_robothardware_conf_file_option} ${_conf_dt_option} ${_simulation_timestep_option}' > /tmp/_gen_project_${_name}_xml_nosim.sh
+    COMMAND sh /tmp/_gen_project_${_name}_xml_nosim.sh
     COMMAND pkill -KILL -f "omniNames -start ${_corba_port}" || echo "no process to kill"
     DEPENDS ${daefile} ${_gen_project_dep_files} ${_xmlfile})
   if(EXISTS ${_collada2eus_exe})
@@ -208,10 +211,11 @@ macro(compile_collada_model daefile)
     set(_conf_file_option "")
     set(_robothardware_conf_file_option "")
     set(_conf_dt_option "")
+    set(_simulation_timestep_option "")
     set(_proj_file_root_option "")
     set(_euscollada_option "")
   else()
-    get_conf_file_option(_conf_file_option _robothardware_conf_file_option _conf_dt_option ${ARGV})
+    get_conf_file_option(_conf_file_option _robothardware_conf_file_option _conf_dt_option _simulation_timestep_option ${ARGV})
     get_proj_file_root_option(_proj_file_root_option ${ARGV})
     get_euscollada_option(_euscollada_option ${ARGV})
   endif()
@@ -284,12 +288,14 @@ macro(compile_collada_model daefile)
   endif()
   add_custom_command(OUTPUT ${_xmlfile}
     COMMAND ${_rtm_naming_exe} ${_corba_port}
-    COMMAND rostest -t ${hrpsys_tools_PACKAGE_PATH}/launch/_gen_project.launch CORBA_PORT:=${_corba_port} INPUT:=${daefile}${_proj_file_root_option} OUTPUT:=${_xmlfile} ${_conf_file_option} ${_robothardware_conf_file_option} ${_conf_dt_option}
+    COMMAND echo 'ROS_PACKAGE_PATH=${hrpsys_tools_PACKAGE_PATH}:${hrpsys_PACKAGE_PATH}:${openhrp3_PACKAGE_PATH}:$ENV{ROS_PACKAGE_PATH} rostest -t ${hrpsys_tools_PACKAGE_PATH}/launch/_gen_project.launch CORBA_PORT:=${_corba_port} INPUT:=${daefile}${_proj_file_root_option} OUTPUT:=${_xmlfile} ${_conf_file_option} ${_robothardware_conf_file_option} ${_conf_dt_option} ${_simulation_timestep_option}' > /tmp/_gen_project_${_name}_xml.sh
+    COMMAND sh /tmp/_gen_project_${_name}_xml.sh
     COMMAND pkill -KILL -f "omniNames -start ${_corba_port}" || echo "no process to kill"
     DEPENDS ${daefile} ${_gen_project_dep_files})
   add_custom_command(OUTPUT ${_xmlfile_nosim}
     COMMAND ${_rtm_naming_exe} ${_corba_port}
-    COMMAND rostest -t ${hrpsys_tools_PACKAGE_PATH}/launch/_gen_project.launch CORBA_PORT:=${_corba_port} INPUT:=${daefile}${_proj_file_root_option} OUTPUT:=${_xmlfile_nosim} INTEGRATE:=false ${_conf_file_option} ${_robothardware_conf_file_option} ${_conf_dt_option}
+    COMMAND echo 'ROS_PACKAGE_PATH=${hrpsys_tools_PACKAGE_PATH}:${hrpsys_PACKAGE_PATH}:${openhrp3_PACKAGE_PATH}:$ENV{ROS_PACKAGE_PATH} rostest -t ${hrpsys_tools_PACKAGE_PATH}/launch/_gen_project.launch CORBA_PORT:=${_corba_port} INPUT:=${daefile}${_proj_file_root_option} OUTPUT:=${_xmlfile_nosim} INTEGRATE:=false ${_conf_file_option} ${_robothardware_conf_file_option} ${_conf_dt_option} ${_simulation_timestep_option}' > /tmp/_gen_project_${_name}_xml_nosim.sh
+    COMMAND sh /tmp/_gen_project_${_name}_xml_nosim.sh
     COMMAND pkill -KILL -f "omniNames -start ${_corba_port}" || echo "no process to kill"
     DEPENDS ${daefile} ${_gen_project_dep_files} ${_xmlfile})
   if(EXISTS ${_collada2eus_exe})
@@ -324,7 +330,11 @@ macro (generate_default_launch_eusinterface_files wrlfile project_pkg_name)
   set(MODEL_FILE ${wrlfile})
   set(ROBOT ${_name})
   set(robot ${_sname})
-  rosbuild_find_ros_package(hrpsys_ros_bridge)
+  if(${USE_ROSBUILD})
+    rosbuild_find_ros_package(hrpsys_ros_bridge)
+  else()
+    set(hrpsys_ros_bridge_PACKAGE_PATH ${hrpsys_ros_bridge_SOURCE_DIR})
+  endif()
   set(${_sname}_generated_launch_euslisp_files)
   configure_file(${hrpsys_ros_bridge_PACKAGE_PATH}/scripts/default_robot_startup.launch.in ${PROJECT_SOURCE_DIR}/launch/${_sname}_startup.launch)
   list(APPEND ${_sname}_generated_launch_euslisp_files ${PROJECT_SOURCE_DIR}/launch/${_sname}_startup.launch)
