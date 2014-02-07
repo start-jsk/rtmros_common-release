@@ -23,11 +23,18 @@
                  (ros::subscribe (format nil "/off_~A" (string-downcase x)) geometry_msgs::WrenchStamped
                                  #'send self :rtmros-force-sensor-callback (read-from-string (format nil ":off-~A" (string-downcase x))) :groupname groupname))
              (send-all (send robot :force-sensors) :name))
+     (ros::subscribe "/zmp" geometry_msgs::PointStamped
+                     #'send self :rtmros-zmp-callback :groupname groupname)
+
      ))
   (:rtmros-motor-states-callback
    (msg)
    (send self :set-robot-state1 :motor-extra-data (send msg :extra_data))
    (send self :set-robot-state1 :temperature (send msg :temperature)))
+  (:rtmros-zmp-callback
+   (msg)
+   (let ((p (send msg :point)))
+     (send self :set-robot-state1 :zmp (float-vector (send p :x) (send p :y) (send p :z)))))
   (:temperature-vector () (cdr (assoc :temperature robot-state)))
   (:motor-extra-data
    ()
@@ -51,7 +58,7 @@
    (f/m &optional (limb) (off nil))
    (if limb
        (let ((key-name (if off
-                           (read-from-string (format nil ":off-~A" (string-downcase (send (send robot :force-sensor limb) :name))))
+                           (read-from-string (format nil ":~A-~A" off (string-downcase (send (send robot :force-sensor limb) :name))))
                          (send (send robot :force-sensor limb) :name))))
          (subseq (cdr (assoc key-name robot-state))
                  (if (eq f/m :force) 0 3)
@@ -67,10 +74,10 @@
    (send self :tmp-force-moment-vector :moment limb))
   (:off-force-vector
    (&optional (limb))
-   (send self :tmp-force-moment-vector :force limb t))
+   (send self :tmp-force-moment-vector :force limb "off"))
   (:off-moment-vector
    (&optional (limb))
-   (send self :tmp-force-moment-vector :moment limb t))
+   (send self :tmp-force-moment-vector :moment limb "off"))
   (:absolute-force-vector
    (&optional (limb))
    (if limb
@@ -85,6 +92,12 @@
      (mapcar #'(lambda (fs moment)
                  (send fs :rotate-vector moment))
              (send robot :force-sensors) (send self :off-moment-vector))))
+  (:zmp-vector
+   (&optional (wrt :local))
+   (let ((zmp (scale 1e3 (cdr (assoc :zmp robot-state)))))
+     (case wrt
+       (:local zmp)
+       (:world (send (car (send robot :links)) :transform-vector zmp)))))
   ;; automatically define methods for ROSBridge services
   (:define-all-ROSBridge-srv-methods
    (&key (debug-view nil) (ros-pkg-name "hrpsys_ros_bridge"))
@@ -146,20 +159,13 @@
 		 (dotimes (i (length v)) (setq str (format nil "~A ~A" str (deg2rad (elt v i)))))
 		 (format nil "~A ~A" str (* 1e-3 tm))))))
   ;; dump pattern file for SequencePlayer
-  ;;  rs-list : list of (list :time time0 :angle-vector av ...)
+  ;;  rs-list : list of (list :time time0 :angle-vector av :root-coords rc ...)
   ;;  output-basename : output file (output-basename.pos, ...)
   (:dump-seq-pattern-file
-   (rs-list output-basename &key (initial-sync-tile 3.0)) ;; [s]
-   (with-open-file
-    (f (format nil "~A.pos" output-basename) :direction :output)
-    (dolist (l rs-list)
-      (format f "~A " (+ initial-sync-tile (cadr (memq :time l))))
-      (let ((av (cadr (memq :angle-vector l))))
-        (dotimes (i (length av))
-          (format f "~A " (deg2rad (elt av i)))
-          ))
-      (format f "~%")
-      )))
+   (rs-list output-basename &key (initial-sync-time 3.0)) ;; [s]
+   (warn ";; :dump-seq-pattern-file is deprecated!! Please use (dump-seq-pattern-file) funciton!!~%")
+   (dump-seq-pattern-file rs-list output-basename :initial-sync-time initial-sync-time)
+   )
   ;;
   (:update-robot-state
    ()
@@ -212,7 +218,7 @@
   (:set-joint-angles-of-group
    (groupname av tm)
    (send self :sequenceplayerservice_setjointanglesofgroup :gname groupname :jvs av :tm tm))
-  (:load-pattern (basename) (send self :sequenceplayerservice_loadpattern :basename basename))
+  (:load-pattern (basename &optional (tm 0.0)) (send self :sequenceplayerservice_loadpattern :basename basename :tm tm))
 #| ;; angle group sample
   (send *ri* :add-joint-group "larm" (send-all (send *robot* :larm :joint-list) :name))
   (send *ri* :set-jointangles-of-group "larm" (scale (/ pi 180.0) (send *robot* :larm :angle-vector)) 4.0)
@@ -538,7 +544,7 @@
    (instance hrpsys_ros_bridge::openhrp_autobalancerservice_footstep :init
              :pos (scale 1e-3 (send f :worldpos))
              :rot (matrix2quaternion (send f :worldrot))
-             :leg (print (format nil "~A" (if (find-method f :l/r) (send f :l/r) (send f :get :l/r)))))
+             :leg (format nil "~A" (if (find-method f :l/r) (send f :l/r) (send f :get :l/r))))
    )
   (:cmd-vel-cb
    (msg &key (vel-x-ratio 1.0) (vel-y-ratio 1.0) (vel-th-ratio 1.0))
@@ -610,3 +616,133 @@
     (let ((rl (send (send (send rb l :root-link) :parent) :joint)))
       (format t " ~A,~A,~A," l (send (send (send rb l :end-coords :parent) :joint) :name) (if rl (send rl :name) "WAIST"))))
   (format t "~%"))
+
+(defun print-end-effector-parameter-conf-from-robot
+  (rb)
+  (format t "end_effectors:")
+  (dolist (l '(:rarm :larm :rleg :lleg))
+    (let ((rl (send (send (send rb l :root-link) :parent) :joint)))
+      (format t " ~A,~A,~A," l (send (send (send rb l :end-coords :parent) :joint) :name) (if rl (send rl :name) "WAIST"))
+      (let* ((dif (send (send rb l :end-coords :parent) :transformation (send rb l :end-coords)))
+             (wp (scale 1e-3 (send dif :worldpos))) ;; [mm] -> [m]
+             (wr (normalize-vector (matrix-log (send dif :worldrot))))
+             (wrn (norm (matrix-log (send dif :worldrot)))))
+         (format t "~A,~A,~A," (elt wp 0) (elt wp 1) (elt wp 2))
+         (format t "~A,~A,~A,~A," (elt wr 0) (elt wr 1) (elt wr 2) wrn)
+         )))
+  (format t "~%")
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; utility functions for seq
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  ;; dump pattern file for SequencePlayer
+  ;;  rs-list : list of (list :time time0 :angle-vector av :root-coords rc ...)
+  ;;  output-basename : output file (output-basename.pos, ...)
+(defun dump-seq-pattern-file
+  (rs-list output-basename &key (initial-sync-time 3.0)) ;; [s]
+  (with-open-file
+   (pf (format nil "~A.pos" output-basename) :direction :output) ;; pos file -> joint angles
+   (dolist (l rs-list)
+     ;; write pos file
+     (format pf "~A " (+ initial-sync-time (cadr (memq :time l))))
+     (let ((av (cadr (memq :angle-vector l))))
+       (dotimes (i (length av))
+         (format pf "~A " (deg2rad (elt av i)))
+         ))
+     (format pf "~%"))) ;; with-open-file for .pos file
+  (when (cadr (memq :torque-vector (car rs-list)))
+    (with-open-file
+     (tf (format nil "~A.torque" output-basename) :direction :output) ;; torque file -> joint torques
+     (dolist (l rs-list)
+       ;; write torque file
+       (format tf "~A " (+ initial-sync-time (cadr (memq :time l))))
+       (let ((av (cadr (memq :torque-vector l))))
+         (dotimes (i (length av))
+           (format tf "~A " (elt av i))
+           ))
+       (format tf "~%")))) ;; with-open-file for .torque file
+  (when (cadr (memq :root-coords (car rs-list)))
+    (with-open-file
+     (wf (format nil "~A.waist" output-basename) :direction :output) ;; waist file -> base position and orientation
+     (dolist (l rs-list)
+       ;; write waist file
+       (format wf "~A " (+ initial-sync-time (cadr (memq :time l))))
+       (let ((wp (scale 1e-3 (send (cadr (memq :root-coords l)) :worldpos))) ;; [mm] -> [m]
+             (wr (car (send (send (cadr (memq :root-coords l)) :copy-worldcoords) :rpy-angle))))
+         (format wf "~A ~A ~A " (elt wp 0) (elt wp 1) (elt wp 2))
+         (format wf "~A ~A ~A " (elt wr 2) (elt wr 1) (elt wr 0))
+         (format wf "~%")
+         ))) ;; with-open-file for .waist file
+    )
+  (when (cadr (memq :zmp (car rs-list)))
+    (with-open-file
+     (zf (format nil "~A.zmp" output-basename) :direction :output) ;; zmp file -> root-relative zmp[m]
+     (dolist (l rs-list)
+       ;; write zmp file
+       (format zf "~A " (+ initial-sync-time (cadr (memq :time l))))
+       (let ((zp (scale 1e-3 (cadr (memq :zmp l))))) ;; [mm] -> [m]
+         (format zf "~A ~A ~A " (elt zp 0) (elt zp 1) (elt zp 2))
+         (format zf "~%")
+         ))) ;; with-open-file for .zmp file
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; utility functions for project generator generation
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; clone euslisp robot and objects to OpenHRP3 project file
+;;   add euslisp model + locate euslisp model in OpenHRP3 world
+(defun dump-project-file-by-cloning-euslisp-models
+  (robot robot-file-path ;; robot euslisp model, robot VRML(or Collada) file path
+   &key (object-models) (object-models-file-path) ;; list of object euslisp model, list of object VRML(or Collada) file path
+        (nosim) (timestep 0.005) (dt 0.005) ;; [s]
+        (output-fname (format nil "/tmp/~A" (send robot :name)))) ;; output file name "output-fname.xml"
+  ;; TODO : Is longfloor.wrl necessary??
+  (let ((str
+         (format nil "rosrun hrpsys_ros_bridge rtmtest -t hrpsys_tools _gen_project.launch \\\
+               INPUT:=~A,~A \\\
+               OBJECT_MODELS:='`rospack find openhrp3`/share/OpenHRP-3.1/sample/model/longfloor.wrl,0,0,0,1,0,0,0 ~A' \\\
+               OUTPUT:=~A.xml \\\
+               INTEGRATE:=~A CORBA_PORT:=15005 CONF_DT_OPTION:='--dt ~A' \\\
+               SIMULATION_TIMESTEP_OPTION:='--timeStep ~A' \\\
+               SIMULATION_JOINT_PROPERTIES_OPTION:='--joint-properties ~A'"
+                 robot-file-path
+                 (gen-ProjectGenerator-model-root-coords-string robot)
+                 (let ((obj-path-list
+                        (mapcar #'(lambda (fpath obj) (format nil "~A,~A" fpath (gen-ProjectGenerator-model-root-coords-string obj)))
+                                object-models-file-path object-models)))
+                   (if obj-path-list
+                       (reduce #'(lambda (x y) (format nil "~A ~A" x y)) obj-path-list)
+                     ""))
+                 (format nil "~A~A" output-fname (if nosim "_nosim" ""))
+                 (if nosim "false" "true")
+                 dt
+                 timestep
+                 (gen-ProjectGenerator-joint-properties-string robot)
+                 )))
+    (unix:system (format nil "bash -c -i \"~A;exit 0\";exit 0" str))
+    ))
+
+(defun gen-ProjectGenerator-joint-properties-string
+  (robot)
+  (let ((str))
+    (dolist (j (send robot :joint-list))
+      (if str
+          (setq str (format nil "~A,~A.angle,~A" str (send j :name) (deg2rad (send j :joint-angle))))
+        (setq str (format nil "~A.angle,~A" (send j :name) (deg2rad (send j :joint-angle)))))
+      )
+    str))
+
+(defun gen-ProjectGenerator-model-root-coords-string
+  (obj)
+  (let* ((dr (matrix-log (send (car (send obj :links)) :worldrot)))
+         (ndr (normalize-vector dr))
+         (rpos (scale 1e-3 (send (car (send obj :links)) :worldpos))))
+      (format nil "~A,~A,~A,~A,~A,~A,~A"
+              (elt rpos 0) (elt rpos 1) (elt rpos 2)
+              (elt ndr 0) (elt ndr 1) (elt ndr 2) (/ (elt dr 1) (elt ndr 1)) ;; openhrp3 axis angle orientation representation
+              )))
+
