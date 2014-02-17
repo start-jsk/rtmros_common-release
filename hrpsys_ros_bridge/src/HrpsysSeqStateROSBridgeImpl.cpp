@@ -36,6 +36,7 @@ HrpsysSeqStateROSBridgeImpl::HrpsysSeqStateROSBridgeImpl(RTC::Manager* manager)
     m_baseRpyIn("baseRpy", m_baseRpy),
     m_rstorqueIn("rstorque", m_rstorque),
     m_servoStateIn("servoState", m_servoState),
+    m_rszmpIn("rszmp", m_rszmp),
     m_mctorqueOut("mctorque", m_mctorque),
     m_SequencePlayerServicePort("SequencePlayerService")
 
@@ -59,6 +60,7 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridgeImpl::onInitialize()
   addInPort("basePos", m_basePosIn);
   addInPort("baseRpy", m_baseRpyIn);
   addInPort("rstorque", m_rstorqueIn);
+  addInPort("rszmp", m_rszmpIn);
   addInPort("servoState", m_servoStateIn);
 
   // Set OutPort buffer
@@ -143,6 +145,7 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridgeImpl::onInitialize()
         for ( int l = 0; l < sensors.length(); l++ ) {
           if ( std::string(sensors[l].name) == std::string(sensor->name) ) {
             si.link_name = links[k].segments[0].name;
+            si.type_name = sensors[l].type;
             sensor_info[sensor->name] = si;
           }
         }
@@ -178,6 +181,7 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridgeImpl::onInitialize()
     for ( int k = 0; k < links->length(); k++ ) {
       if ( std::string(links[k].name) == target ) {
         si.link_name = links[k].segments[0].name;
+        si.type_name = "Force";
       }
     }
     sensor_info[name] = si;
