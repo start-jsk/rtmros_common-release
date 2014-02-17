@@ -51,6 +51,7 @@ catkin_package(
     CATKIN-DEPENDS rtmbuild roscpp sensor_msgs robot_state_publisher actionlib control_msgs tf camera_info_manager image_transport dynamic_reconfigure # pr2_controllers_msgs robot_monitor
     INCLUDE_DIRS # TODO include
     LIBRARIES # TODO
+    CFG_EXTRAS compile_robot_model.cmake
 )
 
 # generate idl
@@ -128,6 +129,9 @@ install(PROGRAMS scripts/rtmlaunch scripts/rtmtest scripts/rtmstart.py
 install(DIRECTORY launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   PATTERN ".svn" EXCLUDE)
+install(DIRECTORY euslisp
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+  PATTERN ".svn" EXCLUDE)
 install(DIRECTORY scripts
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   USE_SOURCE_PERMISSIONS
@@ -141,6 +145,8 @@ install(DIRECTORY cmake
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   PATTERN ".svn" EXCLUDE
   )
+
+  
 
 ##
 ## test
