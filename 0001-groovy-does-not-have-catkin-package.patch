@@ -1,0 +1,34 @@
+From 0075850486786dddcf9715fa61d2c3ce912d613a Mon Sep 17 00:00:00 2001
+From: Isao Isaac Saito <130s@lateeye.net>
+Date: Mon, 17 Feb 2014 18:51:30 +0900
+Subject: [PATCH] groovy does not have catkin package
+
+---
+ package.xml |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/package.xml b/package.xml
+index 5e1e0eb..b95a867 100644
+--- a/package.xml
++++ b/package.xml
+@@ -31,7 +31,7 @@
+   <build_depend>dynamic_reconfigure</build_depend>
+   <build_depend>hrpsys</build_depend>
+   <build_depend>image_transport</build_depend>
+-  <build_depend>pr2_controllers</build_depend> <!-- groovy does not have catkin pr2_controllers package -->
++  <!-- <build_depend>pr2_controllers</build_depend> --> <!-- groovy does not have catkin pr2_controllers package -->
+   <build_depend>mk</build_depend>
+   <build_depend>python-rosdep</build_depend>
+   <build_depend>robot_state_publisher</build_depend>
+@@ -57,7 +57,7 @@
+   <run_depend>rostest</run_depend>
+   <run_depend>rtmbuild</run_depend>
+   <run_depend>sensor_msgs</run_depend>
+-  <run_depend>pr2_controllers</run_depend> <!-- groovy does not have catkin pr2_controllers package -->
++  <!-- <run_depend>pr2_controllers</run_depend> --> <!-- groovy does not have catkin pr2_controllers package -->
+   <run_depend>tf</run_depend>
+ 
+   <!-- <test_depend>hrpsys</test_depend> -->
+-- 
+1.7.9.5
+
