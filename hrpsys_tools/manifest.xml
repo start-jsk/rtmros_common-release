@@ -10,6 +10,9 @@
   <url>http://ros.org/wiki/hrpsys_tools</url>
 
   <depend package="hrpsys"/>
+
+  <rosdep name="hrpsys"/>
+  <rosdep name="rostest"/>
   
 </package>
 
