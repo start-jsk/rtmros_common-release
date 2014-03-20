@@ -1,4 +1,4 @@
-From 4ad218dd83f708058818189045cd4e0da13ea4c7 Mon Sep 17 00:00:00 2001
+From 843ae67e34775cddaa70286081c46aa96c55d5e6 Mon Sep 17 00:00:00 2001
 From: Isao Isaac Saito <130s@lateeye.net>
 Date: Mon, 17 Feb 2014 20:17:47 +0900
 Subject: [PATCH] modifying groovy package.xml, in trial to workaround the
