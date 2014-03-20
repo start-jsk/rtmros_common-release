@@ -20,9 +20,8 @@
   <depend package="openrtm_tools" />
 
   <!-- for samples -->
-  <rosdep name="roscpp_tutorials" />
   <depend package="roscpp_tutorials" />
-  <!-- depend package="move_base_stage_tutorial" / -->
+  <depend package="move_base_stage_tutorial" />
 
 </package>
 

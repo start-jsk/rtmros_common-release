@@ -4,7 +4,7 @@ project(hrpsys_tools)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS rostest)
+find_package(catkin REQUIRED COMPONENTS openrtm_aist_python)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -134,6 +134,3 @@ install(DIRECTORY scripts DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION} USE_SO
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
-install(DIRECTORY test samples DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION} USE_SOURCE_PERMISSIONS)
-add_rostest(test/test-hrpsys-config.test)
-add_rostest(test/test-pa10.test)

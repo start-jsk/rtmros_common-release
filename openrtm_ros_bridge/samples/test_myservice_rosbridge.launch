@@ -5,7 +5,6 @@
   <include file="$(find openrtm_ros_bridge)/samples/myservice_rosbridge.launch" />
 
   <test type="test_myservice_rosbridge.py" pkg="openrtm_ros_bridge"
-	time-limit="300" test-name="test_myservice_rosbridge"
-        retry="4" />
+	time-limit="300" test-name="test_myservice_rosbridge" />
 
 </launch>

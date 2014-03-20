@@ -20,14 +20,9 @@ endif()
 
 # copy idl files from openrtm_aist
 file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/idl)
-execute_process(COMMAND pkg-config --variable=data_prefix openrtm-aist
-  OUTPUT_VARIABLE openrtm_aist_DATA_PREFIX
-  RESULT_VARIABLE RESULT
-  OUTPUT_STRIP_TRAILING_WHITESPACE)
-if(NOT RESULT EQUAL 0)
-  message(FATAL_ERROR "fail to run pkg-config")
-endif()
-set(openrtm_aist_EXAMPLE_IDL_DIR ${openrtm_aist_DATA_PREFIX}/openrtm-1.1/example/)
+find_package(PkgConfig)
+pkg_check_modules(openrtm_aist openrtm-aist REQUIRED)
+set(openrtm_aist_EXAMPLE_IDL_DIR ${openrtm_aist_PREFIX}/share/openrtm_aist/share/openrtm-1.1/example/)
 if(EXISTS ${openrtm_aist_EXAMPLE_IDL_DIR})
   file(GLOB_RECURSE _idl_files "${openrtm_aist_EXAMPLE_IDL_DIR}/*/*/*.idl") #fix me
 else()
@@ -49,7 +44,7 @@ rtmbuild_init()
 # call catkin_package, after rtmbuild_init, before rtmbuild_gen*
 catkin_package(
     DEPENDS #
-    CATKIN_DEPENDS openrtm_tools roscpp
+    CATKIN-DEPENDS openrtm_tools roscpp
     INCLUDE_DIRS # TODO include
     LIBRARIES # TODO
 )
@@ -61,12 +56,8 @@ rtmbuild_genidl()
 rtmbuild_genbridge()
 
 ##
-## install
-##
-install(DIRECTORY test samples DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION} USE_SOURCE_PERMISSIONS)
-
-##
 ## tests
 ##
-add_rostest(test/test_myservice_rosbridge.test)
+
+add_rostest(samples/test_myservice_rosbridge.launch)
 

@@ -1,20 +1,9 @@
 #!/bin/bash
 
-if [ -e `rospack find rtshell`/bin ] ; then # if rosbuild
-    _PYTHONVER=`python -c 'import sys; print "python%s"%sys.version[:3]'`
-    if [ -e /etc/debian_version ]; then
-	_PYTHON_DIR=lib/${_PYTHONVER}/dist-packages
-    else
-	_PYTHON_DIR=lib/${_PYTHONVER}/site-packages
-    fi
-    # export PATH=`rospack find openrtm_aist`/bin:$PATH
-    # export PYTHONPATH=`rospack find openrtm_aist_python`/${_PYTHON_DIR}:$PYTHONPATH
-    export PATH=`rospack find rtshell`/bin:$PATH
-    export PYTHONPATH=`rospack find rtshell`/${_PYTHON_DIR}:`rospack find rtctree`/${_PYTHON_DIR}:`rospack find rtsprofile`/${_PYTHON_DIR}:$PYTHONPATH
-else
-    export PATH=`pkg-config rtshell --variable=prefix`/lib/rtshell:$PATH
-fi
-
+export PATH=`rospack find openrtm_aist`/bin:$PATH
+export PATH=`rospack find rtshell`/bin:$PATH
+_PYTHONVER=`python -c 'import sys; print "python%s"%sys.version[:3]'`
+export PYTHONPATH=`rospack find openrtm_aist_python`/lib/${_PYTHONVER}/site-packages:`rospack find rtshell`/lib/${_PYTHONVER}/site-packages:`rospack find rtctree`/lib/${_PYTHONVER}/site-packages:`rospack find rtsprofile`/lib/${_PYTHONVER}/site-packages:$PYTHONPATH
 if [ -f `rospack find rtshell`/share/rtshell/shell_support ]; then
     source `rospack find rtshell`/share/rtshell/shell_support
 else
