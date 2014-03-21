@@ -1,7 +1,7 @@
-From 30c32aa28eb187f0f87dae84201145007d50eaf2 Mon Sep 17 00:00:00 2001
+From 764199684ba73aa7b9b35ec196966dda1e544142 Mon Sep 17 00:00:00 2001
 From: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
-Date: Fri, 21 Mar 2014 04:18:22 +0900
-Subject: [PATCH 6/6] groovy does not have pr2_controllres rosdep
+Date: Fri, 21 Mar 2014 04:32:39 +0900
+Subject: [PATCH] groovy does not have pr2_controllres rosdep
 
 ---
  package.xml |    4 ++--
