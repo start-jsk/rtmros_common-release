@@ -1,8 +1,0 @@
-ros-groovy-rosnode-rtc (1.0.7-2precise) precise; urgency=high
-
-  * (package.xml) move rostopic from test_depend to build_depend
-  * add rosdep roscpp_tutorials
-
- -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Wed, 19 Mar 2014 15:00:00 -0000
-
-
