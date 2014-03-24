@@ -1,4 +1,4 @@
-From 4d4d4b49cce3bf9627ee11cc3ec7db6896477855 Mon Sep 17 00:00:00 2001
+From d1d031d558d69cce617388edb2a42a868048c361 Mon Sep 17 00:00:00 2001
 From: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
 Date: Sun, 23 Mar 2014 18:12:48 +0900
 Subject: [PATCH 2/2] groovy uses git to download pr2_controllers package
