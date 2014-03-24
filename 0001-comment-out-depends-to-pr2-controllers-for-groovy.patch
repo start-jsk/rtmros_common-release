@@ -1,7 +1,7 @@
 From 728c22c56885db6c266888d016034d023266a45b Mon Sep 17 00:00:00 2001
 From: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
 Date: Fri, 21 Mar 2014 11:59:46 +0900
-Subject: [PATCH] comment out depends to pr2-controllers for groovy
+Subject: [PATCH] comment out depends to pr2-controllers and add git for groovy
 
 ---
  package.xml |    4 ++--
@@ -11,12 +11,13 @@ diff --git a/package.xml b/package.xml
 index cbab9f5..2418a50 100644
 --- a/package.xml
 +++ b/package.xml
-@@ -35,7 +35,7 @@
+@@ -35,7 +35,8 @@
    <build_depend>hrpsys</build_depend>
    <build_depend>hrpsys_tools</build_depend>
    <build_depend>image_transport</build_depend>
 -  <build_depend>pr2_controllers</build_depend> <!-- groovy does not have catkin pr2_controllers package -->
 +  <!-- build_depend>pr2_controllers</build_depend --> <!-- groovy does not have catkin pr2_controllers package -->
++  <build_depend>git</build_depend>
    <build_depend>mk</build_depend>
    <build_depend>python-rosdep</build_depend>
    <build_depend>robot_state_publisher</build_depend>
