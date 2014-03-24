@@ -1,0 +1,24 @@
+From 4d4d4b49cce3bf9627ee11cc3ec7db6896477855 Mon Sep 17 00:00:00 2001
+From: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
+Date: Sun, 23 Mar 2014 18:12:48 +0900
+Subject: [PATCH 2/2] groovy uses git to download pr2_controllers package
+
+---
+ package.xml |    1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/package.xml b/package.xml
+index 2418a50..2b1da37 100644
+--- a/package.xml
++++ b/package.xml
+@@ -36,6 +36,7 @@
+   <build_depend>hrpsys_tools</build_depend>
+   <build_depend>image_transport</build_depend>
+   <!-- build_depend>pr2_controllers</build_depend --> <!-- groovy does not have catkin pr2_controllers package -->
++  <build_depend>git</build_depend> <!-- groovy uses git to download pr2_controllers package -->
+   <build_depend>mk</build_depend>
+   <build_depend>python-rosdep</build_depend>
+   <build_depend>robot_state_publisher</build_depend>
+-- 
+1.7.9.5
+
