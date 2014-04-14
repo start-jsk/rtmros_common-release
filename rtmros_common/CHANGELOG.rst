@@ -2,6 +2,9 @@
 Changelog for package rtmros_common
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.0.9 (2014-04-14)
+------------------
+
 1.0.8 (2014-04-14)
 ------------------
 * (See each contained package for the changelog)
