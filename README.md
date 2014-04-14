@@ -1,3 +1,29 @@
+## rtmros_common (groovy) - 1.0.8-0
+
+User `n130s@130s-serval` released the packages in the `rtmros_common` repository into the `groovy` distro by running `/usr/bin/bloom-release --rosdistro groovy --track groovy rtmros_common` on `Mon, 14 Apr 2014 01:57:54 -0000`
+
+These packages were released:
+- `hrpsys_ros_bridge`
+- `hrpsys_tools`
+- `openrtm_ros_bridge`
+- `openrtm_tools`
+- `rosnode_rtc`
+- `rtmbuild`
+- `rtmros_common`
+
+Version of package(s) in repository `rtmros_common`:
+- rosdistro version: `1.0.7-6`
+- old version: `1.0.7-6`
+- new version: `1.0.8-0`
+
+Versions of tools used:
+- bloom version: `0.5.2`
+- catkin_pkg version: `0.1.28`
+- rosdep version: `0.10.25`
+- rosdistro version: `0.3.4`
+- vcstools version: `0.1.33`
+
+
 ## rtmros_common (groovy) - 1.0.7-6
 
 User `k-okada@kokada-t430s` released the packages in the `rtmros_common` repository into the `groovy` distro by running `/usr/bin/bloom-release rtmros_common --track groovy --rosdistro groovy` on `Mon, 24 Mar 2014 05:12:00 -0000`
