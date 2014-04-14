@@ -2,6 +2,11 @@
 Changelog for package hrpsys_ros_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.0.9 (2014-04-14)
+------------------
+* (hrpsys_ros_bridge) add git to build_depend
+* Contributors: Isaac IY Saito
+
 1.0.8 (2014-04-14)
 ------------------
 * use git:// for download pr2_controllers (potential fix for `#410 <https://github.com/start-jsk/rtmros_common/issues/410>`_)
