@@ -1,0 +1,25 @@
+From 1c05bbcce8eacf980ac2bd7e563af099e581ee0c Mon Sep 17 00:00:00 2001
+From: Isaac IY Saito <130s@lateeye.net>
+Date: Mon, 14 Apr 2014 10:50:09 +0900
+Subject: [PATCH 3/3] 3rd trial commentout pr2 pkg
+
+---
+ package.xml |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/package.xml b/package.xml
+index 6142169..460cf6b 100644
+--- a/package.xml
++++ b/package.xml
+@@ -36,7 +36,7 @@
+   <build_depend>hrpsys</build_depend>
+   <build_depend>hrpsys_tools</build_depend>
+   <build_depend>image_transport</build_depend>
+-  <!-- <build_depend>pr2_controllers</build_depend> --><!-- groovy does not have catkin pr2_controllers package -->
++  <!-- <build_depend>pr2_controllers</build_depend> --> <!-- groovy does not have catkin pr2_controllers package -->
+   <build_depend>mk</build_depend>
+   <build_depend>net-tools</build_depend>
+   <build_depend>procps</build_depend>
+-- 
+1.7.9.5
+
