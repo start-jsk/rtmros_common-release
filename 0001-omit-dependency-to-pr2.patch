@@ -1,0 +1,34 @@
+From 2a6851434fb9dd06ed633ce9b4f33e0ebb4e6fc6 Mon Sep 17 00:00:00 2001
+From: Isaac IY Saito <130s@lateeye.net>
+Date: Mon, 14 Apr 2014 22:13:53 +0900
+Subject: [PATCH] omit dependency to pr2
+
+---
+ package.xml |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/package.xml b/package.xml
+index ffd6e7e..3ae885b 100644
+--- a/package.xml
++++ b/package.xml
+@@ -40,7 +40,7 @@
+   <build_depend>mk</build_depend>
+   <build_depend>net-tools</build_depend>
+   <build_depend>pkg-config</build_depend>
+-  <build_depend>pr2_controllers</build_depend> <!-- groovy does not have catkin pr2_controllers package -->
++  <!-- <build_depend>pr2_controllers</build_depend> --> <!-- groovy does not have catkin pr2_controllers package -->
+   <build_depend>procps</build_depend>
+   <build_depend>python-rosdep</build_depend>
+   <build_depend>robot_state_publisher</build_depend>
+@@ -65,7 +65,7 @@
+   <run_depend>hrpsys</run_depend>
+   <run_depend>hrpsys_tools</run_depend>
+   <run_depend>image_transport</run_depend>
+-  <run_depend>pr2_controllers</run_depend> <!-- groovy does not have catkin pr2_controllers package -->
++  <!-- <run_depend>pr2_controllers</run_depend> --> <!-- groovy does not have catkin pr2_controllers package -->
+   <run_depend>python-psutil</run_depend>
+   <run_depend>robot_state_publisher</run_depend>
+   <run_depend>roscpp</run_depend>
+-- 
+1.7.9.5
+
