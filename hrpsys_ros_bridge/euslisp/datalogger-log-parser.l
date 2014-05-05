@@ -1,6 +1,6 @@
 (defclass datalogger-log-parser
   :super propertied-object
-  :slots (file index count read-state)
+  :slots (file index count read-state time)
   )
 
 (defmethod datalogger-log-parser
@@ -18,6 +18,7 @@
      ))
   (:fname () (send file :fname))
   (:read-state () read-state)
+  (:time () time)
   (:proc
    ()
    (let (line)
@@ -34,13 +35,25 @@
      (setq index count)
 
      (setq read-state (read-from-string (format nil "#f(~A)" (string-left-trim ".0123456789" line))))
+     (let ((tm (data-string-split (car (data-string-split line " ")) ".")))
+       (setq time (instance ros::time :init :sec (read-from-string (car tm)) :nsec (* 1000 (read-from-string (cadr tm))))))
      t
      ))
   )
 
+(defun data-string-split ;; this function will be replaced by https://github.com/euslisp/EusLisp/issues/16
+  (str separator)
+  (let ((start-idx 0) (ret))
+    (dotimes (i (length str))
+      (when (= (elt str i) (elt separator 0))
+        (push (subseq str start-idx i) ret)
+        (setq start-idx (1+ i))))
+    (if (/= start-idx (length str)) (push (subseq str start-idx) ret))
+    (reverse ret)))
+
 (defclass datalogger-log-parser-controller
   :super propertied-object
-  :slots (parser-list robot-name)
+  :slots (parser-list robothardware-name)
   )
 
 (defmethod datalogger-log-parser-controller
@@ -62,15 +75,16 @@
              (mapcar #'(lambda (x) (instance datalogger-log-parser :init (format nil "~A/~A" dir-str x)))
                      (append (remove-if-not #'(lambda (x) (substringp "(" x)) fname-candidate-list)
                              fname-candidate-list-with-valid-line-without-rh)))
-       (setq robot-name
-             (string-right-trim "(" (string-right-trim "Robot)0" (pathname-name (substitute #\. #\_ (pathname-type (find-if #'(lambda (x) (substringp "(Robot)" x)) (send-all (send self :parser-list) :fname))))))))
+       (cond
+        ((find-if #'(lambda (x) (substringp "(Robot)" x)) (send-all (send self :parser-list) :fname))
+         (setq robothardware-name (car (data-string-split (pathname-type (find-if #'(lambda (x) (substringp "(Robot)" x)) (send-all (send self :parser-list) :fname))) "_"))))
+        (t (setq robothardware-name "RobotHardware0")))
        )))
   (:parser-list
    (&optional (str))
    (if str
        (find-if #'(lambda (x) (string= str (pathname-type (send x :fname)))) parser-list)
      parser-list))
-  (:robot-name () robot-name)
   (:state
    ()
    (send-all parser-list :proc)
@@ -83,11 +97,27 @@
   (:potentio-vector
    ()
    (map float-vector #'rad2deg
-        (send (send self :parser-list (format nil "~A(Robot)0_q" robot-name)) :read-state))
+        (send (send self :parser-list (format nil "~A_q" robothardware-name)) :read-state))
    )
   (:reference-torque-vector
    ()
    (send (send self :parser-list "sh_tqOut") :read-state)
+   )
+  (:root-pos
+   ()
+   (scale 1e3 (send (send self :parser-list "sh_basePosOut") :read-state))
+   )
+  (:root-rpy
+   ()
+   (send (send self :parser-list "sh_baseRpyOut") :read-state)
+   )
+  (:root-coords
+   ()
+   (make-coords :pos (send self :root-pos) :rpy (send self :root-rpy))
+   )
+  (:time
+   (&optional (str "sh_qOut"))
+   (send (send self :parser-list str) :time)
    )
   )
 
