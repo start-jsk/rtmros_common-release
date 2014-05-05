@@ -1,4 +1,4 @@
-From a5b23dfb0cbcc6a56217bae65118d24548bf28c2 Mon Sep 17 00:00:00 2001
+From b5e9d609c0a07269b699758537b3f6d48fedcdfa Mon Sep 17 00:00:00 2001
 From: Isaac IY Saito <130s@lateeye.net>
 Date: Mon, 14 Apr 2014 22:13:53 +0900
 Subject: [PATCH] omit dependency to pr2
@@ -8,7 +8,7 @@ Subject: [PATCH] omit dependency to pr2
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/package.xml b/package.xml
-index 2312f0d..3b22780 100644
+index b0d1a23..6d65d6e 100644
 --- a/package.xml
 +++ b/package.xml
 @@ -40,7 +40,7 @@
