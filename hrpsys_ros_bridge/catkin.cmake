@@ -48,9 +48,12 @@ if(NOT RESULT EQUAL 0)
   message(FATAL_ERROR "Fail to run pkg-config ${RESULT}")
 endif()
 if(EXISTS ${hrpsys_IDL_DIR})
-  file(COPY
-    ${hrpsys_IDL_DIR}/
-    DESTINATION ${PROJECT_SOURCE_DIR}/idl)
+  file(GLOB _hrpsys_idl_files RELATIVE ${hrpsys_IDL_DIR}/ ${hrpsys_IDL_DIR}/*.idl)
+  foreach(_hrpsys_idl_file ${_hrpsys_idl_files})
+    if(${hrpsys_IDL_DIR}/${_hrpsys_idl_file} IS_NEWER_THAN ${PROJECT_SOURCE_DIR}/idl/${_hrpsys_idl_file})
+      execute_process(COMMAND cmake -E copy ${hrpsys_IDL_DIR}/${_hrpsys_idl_file} ${PROJECT_SOURCE_DIR}/idl)
+    endif()
+  endforeach()
 else()
   get_cmake_property(_variableNames VARIABLES)
   foreach (_variableName ${_variableNames})
@@ -116,8 +119,8 @@ install(CODE
    endforeach()
   ")
 
-## temprarily fix (FIXME)
-install(CODE "execute_process(COMMAND cmake -E touch \$ENV{DISTDIR}/${CMAKE_INSTALL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}/__init__.py)")
+install(FILES rqt_plugin.xml
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
 ##
 ## test (Copy from CMakeLists.txt)
@@ -183,3 +186,5 @@ file(WRITE models/SampleRobot_controller_config.yaml
 
 add_rostest(test/test-samplerobot.test)
 add_rostest(test/test-pa10.test)
+add_rostest(test/test-import-python.test)
+
