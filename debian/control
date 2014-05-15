@@ -1,0 +1,12 @@
+Source: ros-groovy-rtmros-common
+Section: misc
+Priority: extra
+Maintainer: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
+Build-Depends: debhelper (>= 7.0.50~), ros-groovy-catkin
+Homepage: http://wiki.ros.org/rtmros_common
+Standards-Version: 3.9.2
+
+Package: ros-groovy-rtmros-common
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-groovy-hrpsys-ros-bridge, ros-groovy-hrpsys-tools, ros-groovy-openrtm-ros-bridge, ros-groovy-openrtm-tools, ros-groovy-rosnode-rtc, ros-groovy-rtmbuild
+Description: A package suite that provides all the capabilities for the ROS users to connect to the robots that run on RT Middleware or RTM-based controllers.
