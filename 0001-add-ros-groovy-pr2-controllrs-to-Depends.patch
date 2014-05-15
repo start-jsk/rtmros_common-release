@@ -1,7 +1,7 @@
-From 4a9029f560d4f04ab6e411ebf636e76dd3de4a21 Mon Sep 17 00:00:00 2001
+From 98efb184b0b0a7d8340196b9b98dea74a18635f9 Mon Sep 17 00:00:00 2001
 From: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
 Date: Thu, 15 May 2014 18:54:06 +0900
-Subject: [PATCH] add ros-groovy-pr2-controllrs to Depends
+Subject: [PATCH 1/2] add ros-groovy-pr2-controllrs to Depends
 
 ---
  debian/control.em |    4 ++--
