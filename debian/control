@@ -1,0 +1,12 @@
+Source: ros-groovy-openrtm-tools
+Section: misc
+Priority: extra
+Maintainer: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
+Build-Depends: debhelper (>= 7.0.50~), ros-groovy-catkin, ros-groovy-openrtm-aist, ros-groovy-openrtm-aist-python, ros-groovy-rosbash, ros-groovy-rostest, ros-groovy-rtshell
+Homepage: http://ros.org/wiki/openrtm_tools
+Standards-Version: 3.9.2
+
+Package: ros-groovy-openrtm-tools
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-groovy-openrtm-aist, ros-groovy-openrtm-aist-python, ros-groovy-rosbash, ros-groovy-rtshell
+Description: The openrtm_tools package
