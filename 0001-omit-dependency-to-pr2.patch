@@ -1,4 +1,4 @@
-From b5e9d609c0a07269b699758537b3f6d48fedcdfa Mon Sep 17 00:00:00 2001
+From f1f96078205bc6ea22ac8797db314483ce489273 Mon Sep 17 00:00:00 2001
 From: Isaac IY Saito <130s@lateeye.net>
 Date: Mon, 14 Apr 2014 22:13:53 +0900
 Subject: [PATCH] omit dependency to pr2
@@ -8,7 +8,7 @@ Subject: [PATCH] omit dependency to pr2
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/package.xml b/package.xml
-index b0d1a23..6d65d6e 100644
+index 33a10a3..2d9a542 100644
 --- a/package.xml
 +++ b/package.xml
 @@ -40,7 +40,7 @@
@@ -20,7 +20,7 @@ index b0d1a23..6d65d6e 100644
    <build_depend>procps</build_depend>
    <build_depend>python-rosdep</build_depend>
    <build_depend>robot_state_publisher</build_depend>
-@@ -65,7 +65,7 @@
+@@ -69,7 +69,7 @@
    <run_depend>hrpsys</run_depend>
    <run_depend>hrpsys_tools</run_depend>
    <run_depend>image_transport</run_depend>
