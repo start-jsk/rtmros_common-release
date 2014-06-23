@@ -1,3 +1,5 @@
+(require :rtm-ros-robot-interface "package://hrpsys_ros_bridge/euslisp/rtm-ros-robot-interface.l")
+
 (defclass datalogger-log-parser
   :super propertied-object
   :slots (file index count read-state time)
@@ -52,21 +54,23 @@
     (reverse ret)))
 
 (defclass datalogger-log-parser-controller
-  :super propertied-object
-  :slots (parser-list robothardware-name)
+  :super rtm-ros-robot-interface
+  :slots (parser-list robothardware-name eof-p)
   )
 
 (defmethod datalogger-log-parser-controller
   (:init
-   (fname)
+   (fname &key ((:robot r)))
+   (setq robot (cond ((derivedp r metaclass) (instance r :init))
+                     (t r)))
+   ;;(send-super :init :robot r)
    (let* ((dir-str (format nil "/~A" (reduce #'(lambda (x y) (format nil "~A/~A" x y)) (cdr (pathname-directory fname)))))
           (fname-prefix (pathname-name fname)))
      ;; gather fname list with max lines
      (let* ((fname-candidate-list (remove-if-not #'(lambda (x) (substringp (format nil "~A." fname-prefix) x)) (directory dir-str)))
             (fname-liens-without-rh
              (mapcar #'(lambda (f)
-                         (let ((r (car (piped-fork-returns-list (format nil "LANG=C wc -l ~A/~A" dir-str f)))))
-                           (list (read-from-string (string-right-trim (string-left-trim "0123456789 " r) r)) f)))
+                         (list (read-from-string (car (data-string-split (car (piped-fork-returns-list (format nil "LANG=C wc -l ~A/~A" dir-str f))) " "))) f))
                      (remove-if #'(lambda (x) (substringp "(" x)) fname-candidate-list)))
             (max-line (reduce #'(lambda (x y) (max x y)) (mapcar #'car fname-liens-without-rh)))
             (fname-candidate-list-with-valid-line-without-rh
@@ -85,36 +89,72 @@
    (if str
        (find-if #'(lambda (x) (string= str (pathname-type (send x :fname)))) parser-list)
      parser-list))
-  (:state
+  (:eof-p () eof-p)
+  (:update-robot-state
    ()
-   (send-all parser-list :proc)
+   (setq eof-p (some #'null (send-all parser-list :proc)))
+   (send self :set-robot-state1
+         :reference-vector
+         (map float-vector #'rad2deg (send (send self :parser-list "sh_qOut") :read-state)))
+   (send self :set-robot-state1
+         :potentio-vector
+         (map float-vector #'rad2deg
+              (send (send self :parser-list (format nil "~A_q" robothardware-name)) :read-state)))
+   (send robot :angle-vector (cdr (assoc :potentio-vector robot-state)))
+   (send self :set-robot-state1
+         :torque-vector
+         (send (send self :parser-list (format nil "~A_tau" robothardware-name)) :read-state))
+   ;; (send robot :torque-vector (cdr (assoc :torque-vector robot-state)))
+   (send self :set-robot-state1
+         :reference-torque-vector
+         (send (send self :parser-list "sh_tqOut") :read-state))
+   (send self :set-robot-state1
+         :root-pos
+         (scale 1e3 (send (send self :parser-list "sh_basePosOut") :read-state)))
+   (send self :set-robot-state1
+         :root-rpy
+         (send (send self :parser-list "sh_baseRpyOut") :read-state))
+   (send self :set-robot-state1
+         :root-coords
+         (make-coords :pos (cdr (assoc :root-pos robot-state))
+                      :rpy (cdr (assoc :root-rpy robot-state))))
+   (if (send self :parser-list "sh_zmpOut")
+       (send self :set-robot-state1
+             :zmp
+             (send (send self :parser-list "sh_zmpOut") :read-state)))
+   (send robot :move-coords (cdr (assoc :root-coords robot-state)) (car (send robot :links)))
+   (dolist (f (send robot :force-sensors))
+     (send self :set-robot-state1
+           (send f :name)
+           (send (send self :parser-list (format nil "~A_~A" robothardware-name (send f :name))) :read-state)
+           ))
+   ;; (dolist (i (send robot :imu-sensors))
+   ;;   (send self :set-robot-state1
+   ;;         (send i :name)
+   ;;         (send (send self :parser-list (format nil "~A_~A" robothardware-name (send i :name))) :read-state)
+   ;;         ))
+   (if (send self :parser-list "kf_rpy")
+       (send self :set-robot-state1
+             :imu
+             (let* ((rpy (send (send self :parser-list "kf_rpy") :read-state))
+                    (qt (ros::rot->tf-quaternion (rpy-matrix (elt rpy 2) (elt rpy 1) (elt rpy 0)))))
+               (instance* sensor_msgs::Imu :init
+                          :orientation qt
+                          (append
+                           (if (send robot :imu-sensor "gsensor")
+                               (list :linear_acceleration
+                                     (let ((acc (send (send self :parser-list (format nil "~A_~A" robothardware-name "gsensor")) :read-state)))
+                                       (instance geometry_msgs::Vector3 :init :x (elt acc 0) :y (elt acc 1) :z (elt acc 2)))))
+                           (if (send robot :imu-sensor "gyrometer")
+                               (list :angular_velocity
+                                     (let ((gyro (send (send self :parser-list (format nil "~A_~A" robothardware-name "gyrometer")) :read-state)))
+                                       (instance geometry_msgs::Vector3 :init :x (elt gyro 0) :y (elt gyro 1) :z (elt gyro 2))))))
+                          ))))
    )
-  ;;
-  (:reference-vector
-   ()
-   (map float-vector #'rad2deg (send (send self :parser-list "sh_qOut") :read-state))
-   )
-  (:potentio-vector
-   ()
-   (map float-vector #'rad2deg
-        (send (send self :parser-list (format nil "~A_q" robothardware-name)) :read-state))
-   )
-  (:reference-torque-vector
-   ()
-   (send (send self :parser-list "sh_tqOut") :read-state)
-   )
-  (:root-pos
-   ()
-   (scale 1e3 (send (send self :parser-list "sh_basePosOut") :read-state))
-   )
-  (:root-rpy
-   ()
-   (send (send self :parser-list "sh_baseRpyOut") :read-state)
-   )
-  (:root-coords
-   ()
-   (make-coords :pos (send self :root-pos) :rpy (send self :root-rpy))
-   )
+  ;; overwrite
+  (:reference-vector () (cdr (assoc :reference-vector robot-state)))
+  (:actual-vector () (send self :potentio-vector))
+  (:error-vector () (v- (send self :potentio-vector) (send self :reference-vector)))
   (:time
    (&optional (str "sh_qOut"))
    (send (send self :parser-list str) :time)
