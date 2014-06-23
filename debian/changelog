@@ -1,0 +1,81 @@
+ros-hydro-hrpsys-tools (1.2.1-0precise) precise; urgency=high
+
+  * hrpsys_tools/launch/hrpsys.launch: Added ThermoLimiter/ThermoEstimator definition to hrpsys.launch
+  * (package.xml files) Update repository URLs
+  * Contributors: Isaac Isao Saito, iori
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 22 Jun 2014 15:00:00 -0000
+
+ros-hydro-hrpsys-tools (1.2.0-0precise) precise; urgency=high
+
+  * bump to 1.2.0for hrpsys 315.2.0
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 13 May 2014 15:00:00 -0000
+
+ros-hydro-hrpsys-tools (1.0.12-0precise) precise; urgency=high
+
+  * add RemoveForceSensorLinkOffset setting ;; I write both AbsoluteForceSensor and RemoveForceSensorLinkOffset for compatibility
+  * make fail when pa10 is fail to launch
+  * Contributors: Kei Okada, Shunichi Nozawa
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Mon, 05 May 2014 15:00:00 -0000
+
+ros-hydro-hrpsys-tools (1.0.11-0precise) precise; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 15 Apr 2014 15:00:00 -0000
+
+ros-hydro-hrpsys-tools (1.0.10-0precise) precise; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Mon, 14 Apr 2014 15:00:00 -0000
+
+ros-hydro-hrpsys-tools (1.0.9-0precise) precise; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 13 Apr 2014 15:00:00 -0000
+
+ros-hydro-hrpsys-tools (1.0.8-0precise) precise; urgency=high
+
+  * use start_omninames.sh for rosdevel build environment, see #400 <https://github.com/start-jsk/rtmros_common/issues/400>
+  * add_py_launch_prefix
+  * Contributors: Kei Okada, Yohei Kakiuchi, Isaac Isao Saito
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 13 Apr 2014 15:00:00 -0000
+
+ros-hydro-hrpsys-tools (1.0.7-0precise) precise; urgency=high
+
+  * add respawn to rtcd/hrpsys-simulator, RESPAWN_MODELLOADER, RESPAWN_SIMULATOR, RESPAWN_RTCD, see Issue #380
+  * hrpsys_tools: (test-pa10.test) run unittest first, then test hcf
+  * hrpsys_tools, hrpsys_ros_bridge: increase retly to 4 for test
+  * hrpsys_tools: add rosbuild_add_rostest to CMakeList.txt and fix test-hrpsys-config.py to load_mafest for rosbuild environment
+  * add retry=2 tag, since we staill have trouble on connection sometimes (https://code.google.com/p/hrpsys-base/issues/detail?id=192)
+  * add launch-prefix argument for hrpsys_py node
+  * add samples direcotry to install
+  * add -c option to specify commands to execute
+  * set RobotHardware name due to api change of hrpsys_tools_config.py
+  * add samples direcotry to install
+  * use -c to specify commands
+  * add -c option to specify commands to execute
+  * forge to add
+  * set RobotHardware name due to api change of hrpsys_tools_config.py
+  * add test code that uses hrpsys.launch
+  * add waitForRTCManagerAndRobotHardware for interactive mode
+  * remove openrtm_aist_python from find_package
+  * add interactive mode, invoke with ipython ... or -i option
+  * add sample code of interactive mode of hrpsys_tools_config.py in test-hrpsys-config-test
+  * fix test code to work with clean environment
+  * fix python code syntax error
+  * fix typo
+  * write contents of test-hrpsys.test
+  * Update test-hrpsys-config.py
+    rename testHrpsysConfigurator -> TestHrpsysConfigurator
+  * add test/test-hrpsys-config.test
+  * add depend hrpsys to fke rosdep install
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Wed, 19 Mar 2014 15:00:00 -0000
+
+
