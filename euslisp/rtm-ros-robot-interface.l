@@ -25,7 +25,8 @@
              (send-all (send robot :force-sensors) :name))
      (ros::subscribe "/zmp" geometry_msgs::PointStamped
                      #'send self :rtmros-zmp-callback :groupname groupname)
-
+     (ros::subscribe "/imu" sensor_msgs::Imu
+                     #'send self :rtmros-imu-callback :groupname groupname)
      ))
   (:rtmros-motor-states-callback
    (msg)
@@ -35,6 +36,9 @@
    (msg)
    (let ((p (send msg :point)))
      (send self :set-robot-state1 :zmp (float-vector (send p :x) (send p :y) (send p :z)))))
+  (:rtmros-imu-callback
+   (msg)
+   (send self :set-robot-state1 :imu msg))
   (:temperature-vector () (cdr (assoc :temperature robot-state)))
   (:motor-extra-data
    ()
@@ -54,17 +58,20 @@
                          (send (send wrc :torque) :x)
                          (send (send wrc :torque) :y)
                          (send (send wrc :torque) :z)))))
+  (:tmp-force-moment-vector-for-limb
+   (f/m fsensor-name &optional (off nil))
+   (let ((key-name (if off
+                       (read-from-string (format nil ":~A-~A" off (string-downcase fsensor-name)))
+                     fsensor-name)))
+     (subseq (cdr (assoc key-name robot-state))
+             (if (eq f/m :force) 0 3)
+             (if (eq f/m :force) 3 6))))
   (:tmp-force-moment-vector
    (f/m &optional (limb) (off nil))
    (if limb
-       (let ((key-name (if off
-                           (read-from-string (format nil ":~A-~A" off (string-downcase (send (send robot :force-sensor limb) :name))))
-                         (send (send robot :force-sensor limb) :name))))
-         (subseq (cdr (assoc key-name robot-state))
-                 (if (eq f/m :force) 0 3)
-                 (if (eq f/m :force) 3 6)))
+       (send self :tmp-force-moment-vector-for-limb f/m (send (car (send robot limb :force-sensors)) :name) off)
      (mapcar #'(lambda (x)
-                 (send self :tmp-force-moment-vector f/m x off))
+                 (send self :tmp-force-moment-vector-for-limb f/m x off))
              (send-all (send robot :force-sensors) :name))))
   (:force-vector
    (&optional (limb))
@@ -81,14 +88,14 @@
   (:absolute-force-vector
    (&optional (limb))
    (if limb
-       (send (send robot :force-sensor limb) :rotate-vector (send self :off-force-vector limb))
+       (send (car (send robot limb :force-sensors)) :rotate-vector (send self :off-force-vector limb))
      (mapcar #'(lambda (fs force)
                  (send fs :rotate-vector force))
              (send robot :force-sensors) (send self :off-force-vector))))
   (:absolute-moment-vector
    (&optional (limb))
    (if limb
-       (send (send robot :force-sensor limb) :rotate-vector (send self :off-moment-vector limb))
+       (send (car (send robot limb :force-sensors)) :rotate-vector (send self :off-moment-vector limb))
      (mapcar #'(lambda (fs moment)
                  (send fs :rotate-vector moment))
              (send robot :force-sensors) (send self :off-moment-vector))))
@@ -170,12 +177,19 @@
   (:update-robot-state
    ()
    (send-super :update-robot-state)
-   (let ((imucoords (send *tfl* :lookup-transform "/imu_floor" (format nil "/~a" (send (car (send robot :links)) :name)) (ros::time))))
-     (if imucoords (send robot :newcoords imucoords))
-     ))
+   (let ((imucoords (make-coords :rot (ros::tf-quaternion->rot (send (cdr (assoc :imu robot-state)) :orientation)))))
+     (if imucoords (send robot :move-coords imucoords (car (send robot :imu-sensors))))))
   (:imucoords
    ()
    (send robot :copy-worldcoords))
+  (:accel-vector
+   ()
+   (let ((acc (send (cdr (assoc :imu robot-state)) :linear_acceleration)))
+     (float-vector (send acc :x) (send acc :y) (send acc :z))))
+  (:gyro-vector
+   ()
+   (let ((gyro (send (cdr (assoc :imu robot-state)) :angular_velocity)))
+     (float-vector (send gyro :x) (send gyro :y) (send gyro :z))))
   (:state
     (&rest args)
     (case (car args)
@@ -343,8 +357,10 @@
     ((stringp limb)
      (apply method-func
             limb nil nil args))
-    ((send robot :force-sensor limb)
-     (let ((fs (send robot :force-sensor limb))
+    ((eq limb :legs) (mapcar #'(lambda (l) (send* self method-name l args)) '(:rleg :lleg)))
+    ((eq limb :arms) (mapcar #'(lambda (l) (send* self method-name l args)) '(:rarm :larm)))
+    ((car (send robot limb :force-sensors))
+     (let ((fs (car (send robot limb :force-sensors)))
            (base-name (send (send (send (send robot limb :root-link) :parent) :joint) :name)))
        (apply method-func
               (string-downcase (send fs :name))
@@ -359,8 +375,6 @@
               (send (send (send (send robot rlimb :root-link) :parent) :joint) :name)
               (send (send (send (send robot rlimb :end-coords) :parent) :joint) :name)
               args)))
-    ((eq limb :legs) (mapcar #'(lambda (l) (send* self method-name l args)) '(:rleg :lleg)))
-    ((eq limb :arms) (mapcar #'(lambda (l) (send* self method-name l args)) '(:rarm :larm)))
     (t ) ;; virtual force sensor is not supported in this file
     ))
   )
@@ -424,7 +438,7 @@
              (let* ((abs-v (send self (read-from-string (format nil ":absolute-~A-vector" (string-downcase f/m))) alimb))
                     (param (send self :get-forcemoment-offset-param alimb))
                     (off (v+ (send param (if (eq f/m :force) :force_offset :moment_offset))
-                             (send (send robot :force-sensor alimb) :inverse-rotate-vector abs-v))))
+                             (send (car (send robot alimb :force-sensors)) :inverse-rotate-vector abs-v))))
                (list off abs-v))))
      (mapcar #'(lambda (alimb)
                  (let* ((ret (mapcar #'(lambda (x) (calc-off alimb)) (make-list itr)))
