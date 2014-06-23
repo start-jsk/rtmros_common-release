@@ -1,6 +1,6 @@
 <package>
   <name>hrpsys_ros_bridge</name>
-  <version>1.2.0</version>
+  <version>1.2.1</version>
   <description>hrpsys_ros_bridge package provides basic functionalities to bind
   	<a href = "http://wiki.ros.org/hrpsys">hrpsys</a>, a 
   	<a href = "http://openrtm.org/">OpenRTM</a>-based controller, and ROS.<br /> 
@@ -17,8 +17,8 @@
   <license>BSD</license>
 
   <url type="website">http://wiki.ros.org/hrpsys_ros_bridge</url>
-  <url type="repository">https://rtm-ros-robotics.googlecode.com/svn/trunk/rtmros_common</url>
-  <url type="bugtracker">https://code.google.com/p/rtm-ros-robotics/issues/</url>
+  <url type="repository">https://github.com/start-jsk/rtmros_common</url>
+  <url type="bugtracker">https://github.com/start-jsk/rtmros_common/issues/</url>
 
   <author email="k-okada@jsk.t.u-tokyo.ac.jp">Kei Okada</author>
 
@@ -34,10 +34,11 @@
   <build_depend>dynamic_reconfigure</build_depend>
   <build_depend>git</build_depend>
   <build_depend>hostname</build_depend>
-  <build_depend>hrpsys</build_depend>
+  <build_depend version_gte="315.2.0">hrpsys</build_depend>
   <build_depend>hrpsys_tools</build_depend>
   <build_depend>image_transport</build_depend>
   <build_depend>mk</build_depend>
+  <build_depend>nav_msgs</build_depend>
   <build_depend>net-tools</build_depend>
   <build_depend>pkg-config</build_depend>
   <build_depend>pr2_controllers</build_depend> <!-- groovy does not have catkin pr2_controllers package -->
@@ -49,15 +50,15 @@
   <build_depend>roslang</build_depend>
   <build_depend>rosnode</build_depend>
   <build_depend>rostest</build_depend>
+  <build_depend>rqt_gui</build_depend>
+  <build_depend>rqt_gui_py</build_depend>
+  <build_depend>rqt_robot_dashboard</build_depend>
+  <build_depend>rqt_robot_monitor</build_depend>
   <build_depend>rtmbuild</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>subversion</build_depend>
   <build_depend>tf</build_depend>
   <build_depend>visualization_msgs</build_depend>
-  <build_depend>rqt_robot_dashboard</build_depend>
-  <build_depend>rqt_robot_monitor</build_depend>
-  <build_depend>rqt_gui</build_depend>
-  <build_depend>rqt_gui_py</build_depend>
   
   <run_depend>actionlib</run_depend>
   <run_depend>camera_info_manager</run_depend>
@@ -66,24 +67,26 @@
   <run_depend>diagnostic_aggregator</run_depend>
   <run_depend>diagnostic_msgs</run_depend>
   <run_depend>dynamic_reconfigure</run_depend>
+  <run_depend>ipython</run_depend>
   <run_depend>hrpsys</run_depend>
   <run_depend>hrpsys_tools</run_depend>
   <run_depend>image_transport</run_depend>
+  <run_depend>nav_msgs</run_depend>
   <run_depend>pr2_controllers</run_depend> <!-- groovy does not have catkin pr2_controllers package -->
   <run_depend>python-psutil</run_depend>
   <run_depend>robot_state_publisher</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>rosnode</run_depend>
   <run_depend>rostest</run_depend>
+  <run_depend>rqt_gui</run_depend>
+  <run_depend>rqt_gui_py</run_depend>
+  <run_depend>rqt_robot_dashboard</run_depend>
+  <run_depend>rqt_robot_monitor</run_depend>
   <run_depend>rtmbuild</run_depend>
   <run_depend>sensor_msgs</run_depend>
   <run_depend>tf</run_depend>
   <run_depend>visualization_msgs</run_depend>
-  <run_depend>rqt_robot_dashboard</run_depend>
-  <run_depend>rqt_robot_monitor</run_depend>
-  <run_depend>rqt_gui</run_depend>
-  <run_depend>rqt_gui_py</run_depend>
-     
+
   <!-- <test_depend>hrpsys</test_depend> -->
   <!-- <test_depend>hrpsys_tools</test_depend> -->
   <!-- <test_depend>openrtm_tools</test_depend> -->
