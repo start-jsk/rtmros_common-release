@@ -1,6 +1,6 @@
-From 00ab0bbbcf4bbdfb5f1f1a347f2aeb00367d89b8 Mon Sep 17 00:00:00 2001
-From: Isaac IY Saito <130s@lateeye.net>
-Date: Mon, 14 Apr 2014 22:13:53 +0900
+From 6fdbb39250a9d0c89a8883636c3aaf0739b5a26b Mon Sep 17 00:00:00 2001
+From: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
+Date: Mon, 23 Jun 2014 16:38:07 +0900
 Subject: [PATCH] omit dependency to pr2
 
 ---
@@ -8,11 +8,11 @@ Subject: [PATCH] omit dependency to pr2
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/package.xml b/package.xml
-index 3297a14..5bab359 100644
+index d6ab575..9131ad2 100644
 --- a/package.xml
 +++ b/package.xml
-@@ -40,7 +40,7 @@
-   <build_depend>mk</build_depend>
+@@ -41,7 +41,7 @@
+   <build_depend>nav_msgs</build_depend>
    <build_depend>net-tools</build_depend>
    <build_depend>pkg-config</build_depend>
 -  <build_depend>pr2_controllers</build_depend> <!-- groovy does not have catkin pr2_controllers package -->
@@ -20,10 +20,10 @@ index 3297a14..5bab359 100644
    <build_depend>procps</build_depend>
    <build_depend>python-rosdep</build_depend>
    <build_depend>robot_state_publisher</build_depend>
-@@ -69,7 +69,7 @@
-   <run_depend>hrpsys</run_depend>
+@@ -72,7 +72,7 @@
    <run_depend>hrpsys_tools</run_depend>
    <run_depend>image_transport</run_depend>
+   <run_depend>nav_msgs</run_depend>
 -  <run_depend>pr2_controllers</run_depend> <!-- groovy does not have catkin pr2_controllers package -->
 +  <!-- <run_depend>pr2_controllers</run_depend> --> <!-- groovy does not have catkin pr2_controllers package -->
    <run_depend>python-psutil</run_depend>
