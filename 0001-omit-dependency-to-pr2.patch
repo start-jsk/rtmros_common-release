@@ -1,4 +1,4 @@
-From 6fdbb39250a9d0c89a8883636c3aaf0739b5a26b Mon Sep 17 00:00:00 2001
+From ef6da6fcec8316ac40ba7fd62fd50e05630ff873 Mon Sep 17 00:00:00 2001
 From: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
 Date: Mon, 23 Jun 2014 16:38:07 +0900
 Subject: [PATCH] omit dependency to pr2
@@ -8,7 +8,7 @@ Subject: [PATCH] omit dependency to pr2
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/package.xml b/package.xml
-index d6ab575..9131ad2 100644
+index baa521c..b2433bf 100644
 --- a/package.xml
 +++ b/package.xml
 @@ -41,7 +41,7 @@
