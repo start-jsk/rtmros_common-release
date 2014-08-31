@@ -1,72 +1,47 @@
-rtmros_common  [![Build Status](https://travis-ci.org/start-jsk/rtmros_common.png)](https://travis-ci.org/start-jsk/rtmros_common)
--------------
+# hrpsys\_ros\_bridge
+## Introduction
+hrpsys\_ros\_bridge is a package to connect `hrpsys <http://wiki.ros.org/hrpsys>`_ (OpenRTM-based controller) system and ROS system.
 
-A package suite that provides all the capabilities for the ROS users to connect to the robots that run on RT Middleware or RTM-based controllers.
+This package contains ROSBridge to `hrpsys`, cmake_libraries, launch files, Euslisp interface, and examples.
 
+### ROSBridge
+  ROSBridge here is a ROS node to bridge `hrpsys` system and ROS system.
 
---------------
+    You might want to check other "bridging" software in ROS too such as:
+    
+    - `rosbridge_suite <http://wiki.ros.org/rosbridge_suite>`_ provides a JSON API to ROS functionality for non-ROS programs.
+    - `openrtm_ros_bridge <http://wiki.ros.org/openrtm_ros_bridge?distro=hydro>`_ Provides a ROS node between `OpenRTM`.
 
-This document explains how to use and how to contribute to rtm-ros-robotics softwares ([openrtm_aist_core](https://github.com/start-jsk/openrtm_aist_core), [openhrp3](https://github.com/start-jsk/openhrp3), [hrpsys](https://github.com/start-jsk/hrpsys), [rtshell_core](https://github.com/start-jsk/rtshell_core), [rtmros_common](https://github.com/start-jsk/rtmros_common), [rtmros_hironx](https://github.com/start-jsk/rtmros_hironx), [rtmros_tutorial](https://github.com/start-jsk/rtmros_turorial), [rtmros_gazebo](https://github.com/start-jsk/rtmros_gazebo)). The instruction uses `rtmros_common` repository as an example, but also works for other rtm-ros-robotics repositories.
+  You can use `OpenRTM` resources from ROS interface, e.g., 
+  use OpenRTM ``Data Ports`` through ROS ``Topic`` and OpenRTM ``Servie Ports`` through ROS ``Service``. The following table shows the corresponding concepts for the 2 worlds.
 
-1. Install software
- rtm-ros-robotics software is distributed as ros-debian packages, if you already uses ROS system, install the software as follows:
- - `sudo apt-get install ros-$ROS_DISTRO-rtmros-common`
- 
- If you did not installed ROS sysem, please follow [this instruction](http://wiki.ros.org/hydro/Installation/Ubuntu).
- - ``sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu `lsb_release -a` main" > /etc/apt/sources.list.d/ros-latest.list'``
- - `wget http://packages.ros.org/ros.key -O - | sudo apt-key add -`
- - `sudo apt-get update`
- - `sudo apt-get update ros-hydro-base` # you may use ros-groovy-base if you want
- - `sudo rosdep init`
- - `rosdep update`
- - `source /opt/ros/hydro/setup.bash` # it is better to source ROS environment everytime terminal starts (`echo "source /opt/ros/hydro/setup.bash" >> ~/.bashrc`)
+| \ | ROS | OpenRTM |
+| --- | --- | --- |
+| Process | ROS Node | RTC |
+| Data connection | Topic | Data Port |
+| RPC connection | Service | Service Port |
 
-2. Compile from source code
- You may have two choice, one is to compile all rtm-ros-robotics source code, other is to compile target repository.
- First, create catkin workspace
- - `mkdir -p ~/catkin_ws/src`
- - `cd ~/catkin_ws/src`
- - `catkin_init_workspace`
- - `wstool init .`
- 
- If compile all source code
- - `wstool merge https://raw.github.com/start-jsk/rtmros_common/master/.rosinstall -y`
- 
- Else if compile only targe repository
- - `wstool set rtm-ros-robotics/rtmros_common https://github.com/start-jsk/rtmros_common --git -y`
- 
- Both methods needs following procedures.
- - `wstool update `
- - `cd ..`
- - `source /opt/ros/hydro/setup.bash`
- - `rosdep install -v -r --from-paths src --ignore-src --rosdistro hydro -y`
- - `catkin_make`
+- HrpsysSeqStateROSBridge :  
+  Publish ROS topics by reading RTC's data ports. 
 
-3. Contributes to rtm-ros-robotics projects.
- - First fork the target repository on GitHub
- - Move to the package direcotry
- - `source ~/catkin_ws/devel/setup.bash`
- - `roscd rtmros_common`
- -  create branch for your fix
- - `git checkout -b your_awesome_code_branch`
- -  write awesome code and commit to local repo
- -   ... wite code....
- - `git commit -m "detailed description of what you did"`
- -  Add your forked repository as upstream
- - `git remote add experimental https://github.com/<your github user name>/rtmros_common`
- - `git push experimental your_awesome_code_branch`
- - Submit a pull request on GitHub to the repository
- - Please check travic-ci status after sending your pull request.
+  Send ROS JointTrajectory service to ``SequencePlayer.rtc``  by its service ports.
 
-4. Uses other forked repository *before* merged into master.
+2. Generated ROSBridges:
 
-You don't need to wait for the maintainers to merge some pull requests by others
-before you use them.
- - Adding other's remote repository to your git remote
- - `git remote add <awesome-fork> https://github.com/<user>/rtmros_common`
- - Fetch branches from the remote.
- - `git fetch <awesome-fork>`
- - Merge those remote branch into your current branch
- - `git merge <awesome-fork>/<branch-name>`
+   By default, ROS Bridge are generated in hrpsys\_ros\_bridge make.
 
+   These bridges ROS service to OpenRTM service port.
 
+   Based on ``hrpsys_ros_bridge/idl/*.idl``, generated codes are in ``hrpsys_ros_bridge/src_gen/*.cpp`` and built binaries are in ``hrpsys_ros_bridge/[bin,lib]``. 
+   
+### cmake libraries
+   [``hrpsys_ros_bridge/cmake/compile_robot_model.cmake``] (https://github.com/start-jsk/rtmros_common/blob/master/hrpsys_ros_bridge/cmake/compile_robot_model.cmake) is a CMake file to convert robot model file format.
+
+### launch files
+   [``hrpsys_ros_bridge/launch/hrpsys_ros_bridge.launch``] (https://github.com/start-jsk/rtmros_common/blob/master/hrpsys_ros_bridge/launch/hrpsys_ros_bridge.launch) is a launch file to invoke ROSBridges and connect them with RTCs.
+
+### Euslisp interface
+   [Euslisp Interface] (https://github.com/start-jsk/rtmros_common/blob/master/hrpsys_ros_bridge/euslisp/README.md)
+
+### Examples
+   ``hrpsys_ros_bridge/test/test-samplerobot.test``
