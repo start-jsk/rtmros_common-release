@@ -1,0 +1,81 @@
+ros-groovy-rtmros-common (1.2.2-0quantal) quantal; urgency=high
+
+  * (rtm-ros-robot-interface)
+    
+      * Define Euslisp setter and getter from param slots names
+      * Update set-st-param for Stabilizer
+      * Add KalmanFilter ROS Bridge and euslisp interface to hrpsys_ros_bridge.launch
+      * Add calibrate-inertia-sensor
+      * Add new arguments for new st param
+      * Fix end-effector name (without colon) according to https://github.com/fkanehiro/hrpsys-base/pull/301
+      * Update abc and st euslisp interface according to idl update, fkanehiro/hrpsys-base#239 <https://github.com/fkanehiro/hrpsys-base/issues/239>
+      * Access robot-state's imu in callback to fix https://github.com/start-jsk/rtmros_tutorials/issues/67
+    
+  * Use catkin_make -C to change direcotry (Fix #523 <https://github.com/start-jsk/rtmros_common/issues/523>)
+  * (datalogger-log-parser.l)
+    
+      * Support https://github.com/jsk-ros-pkg/jsk_pr2eus/commit/3200b63dfcbd3c02b919fe6ad03c425e5057ee5c commit
+      * Support both reference worldcoords and actual worldcoords ;; StateHolder's value is reference and kf is actual.
+    
+  * added make-default-ForceCalibPosesForLegs to euslisp/calib-force-sensor-params.l
+  * (Force sensor)
+    
+      * fixed accessing to force sensor in calibration function
+      * fix AbsoluteForceSensorService -> RemoveForceSensorLinkOffsetService
+    
+  * (compile_robot_model.cmake, hrpsys.launch, hrpsys_tools_config.py) Add argument to use Unstable RTC List and configure it from cmake discussed in https://github.com/start-jsk/rtmros_gazebo/pull/61
+  * (hrpsys.launch) : Add config_file setting for HGcontroller
+  * Contributors: Kei Okada, Kunio Kojima, Shunichi Nozawa, Masaki Murooka, Isaac IY Saito
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sat, 30 Aug 2014 15:00:00 -0000
+
+ros-groovy-rtmros-common (1.2.1-0quantal) quantal; urgency=high
+
+  * (package.xml files) Update repository URLs
+  * Contributors: Isaac Isao Saito
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 22 Jun 2014 15:00:00 -0000
+
+ros-groovy-rtmros-common (1.2.0-0quantal) quantal; urgency=high
+
+  * bump to 1.2.0for hrpsys 315.2.0
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 13 May 2014 15:00:00 -0000
+
+ros-groovy-rtmros-common (1.0.12-0quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Mon, 05 May 2014 15:00:00 -0000
+
+ros-groovy-rtmros-common (1.0.11-0quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 15 Apr 2014 15:00:00 -0000
+
+ros-groovy-rtmros-common (1.0.10-0quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Mon, 14 Apr 2014 15:00:00 -0000
+
+ros-groovy-rtmros-common (1.0.9-0quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 13 Apr 2014 15:00:00 -0000
+
+ros-groovy-rtmros-common (1.0.8-0quantal) quantal; urgency=high
+
+  * (See each contained package for the changelog)
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 13 Apr 2014 15:00:00 -0000
+
+ros-groovy-rtmros-common (1.0.7-0quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Wed, 19 Mar 2014 15:00:00 -0000
+
+
