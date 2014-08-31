@@ -2,6 +2,9 @@
 Changelog for package rtmbuild
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.2.2 (2014-08-31)
+------------------
+
 1.2.1 (2014-06-23)
 ------------------
 * (idl2srv.py) : Check pointer or not ;; At previous revision, non-pointer variables are deleted
