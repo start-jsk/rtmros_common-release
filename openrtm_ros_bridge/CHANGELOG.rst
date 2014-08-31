@@ -2,6 +2,9 @@
 Changelog for package openrtm_ros_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.2.2 (2014-08-31)
+------------------
+
 1.2.1 (2014-06-23)
 ------------------
 * (index.rst) Add usage api doc
