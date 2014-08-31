@@ -2,6 +2,9 @@
 Changelog for package rosnode_rtc
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.2.2 (2014-08-31)
+------------------
+
 1.2.1 (2014-06-23)
 ------------------
 * (package.xml files) Update repository URLs
