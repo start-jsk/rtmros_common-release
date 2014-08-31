@@ -38,7 +38,9 @@
      (send self :set-robot-state1 :zmp (float-vector (send p :x) (send p :y) (send p :z)))))
   (:rtmros-imu-callback
    (msg)
-   (send self :set-robot-state1 :imu msg))
+   (send self :set-robot-state1 :imu msg)
+   (let ((imucoords (make-coords :rot (ros::tf-quaternion->rot (send (cdr (assoc :imu robot-state)) :orientation)))))
+     (send robot :move-coords imucoords (car (send robot :imu-sensors)))))
   (:temperature-vector () (cdr (assoc :temperature robot-state)))
   (:motor-extra-data
    ()
@@ -174,11 +176,6 @@
    (dump-seq-pattern-file rs-list output-basename :initial-sync-time initial-sync-time)
    )
   ;;
-  (:update-robot-state
-   ()
-   (send-super :update-robot-state)
-   (let ((imucoords (make-coords :rot (ros::tf-quaternion->rot (send (cdr (assoc :imu robot-state)) :orientation)))))
-     (if imucoords (send robot :move-coords imucoords (car (send robot :imu-sensors))))))
   (:imucoords
    ()
    (send robot :copy-worldcoords))
@@ -211,6 +208,50 @@
          :wrt wrt)
    )
   )
+
+;; define Euslisp setter and getter method
+(defun def-set-get-param-method
+  (param-class ;; parameter class
+   set-param-method-name get-param-method-name ;; Euslisp setter and getter method which user want to define
+   set-param-idl-name get-param-idl-name ;; raw setter and getter method converted from idl2srv files
+   &key (optional-args) ;; arguments for raw setter and getter method
+        (debug nil))
+  (let* ((param-slots-list ;; get slots list for param-class
+          (remove-if #'(lambda (x) (string= "plist" x))
+                     (mapcar #'(lambda (x) (string-left-trim "::_" (string-left-trim "ros" (format nil "~A" x))))
+                             (concatenate cons (send (eval param-class) :slots)))))
+         (getter-defmethod-macro
+           `(defmethod rtm-ros-robot-interface
+              (,get-param-method-name
+               ,(if optional-args (list (cadr optional-args)) (list ))
+               (send (send self ,get-param-idl-name ,@optional-args) :i_param))))
+         ;; generate defmethod like
+         ;;  (:set-xx-param (&key yy-zz)
+         ;;   (let ((current-param (send self :get-xx-param))
+         ;;         (param (instance ww :init (if yy-zz yy-zz (send current-param :yy_zz))))
+         ;;      (send self :aaService_setParameter :i_param param)))
+         (setter-defmethod-macro
+           `(defmethod rtm-ros-robot-interface
+              (,set-param-method-name
+               ,(append (if optional-args (list (cadr optional-args))) (list '&key) (mapcar #'(lambda (x) (read-from-string (substitute (elt "-" 0) (elt "_" 0) x))) param-slots-list)) ;; replace _ => - for Euslisp friendly argument
+               (let* ((current-param ,(append (list 'send 'self get-param-method-name) (if optional-args (list (cadr optional-args)))))
+                      (param (instance ,param-class
+                                       :init
+                                       ,@(apply #'append
+                                                (mapcar #'(lambda (x)
+                                                            (let ((eus-sym (read-from-string (substitute (elt "-" 0) (elt "_" 0) x)))
+                                                                  (param-sym (read-from-string (format nil ":~A" x))))
+                                                              (list param-sym (list 'if eus-sym eus-sym (list 'send 'current-param param-sym)))))
+                                                        param-slots-list))
+                                       )))
+                 (send self ,set-param-idl-name :i_param param ,@optional-args)
+                 )))))
+    (when debug
+      (pprint (macroexpand getter-defmethod-macro))
+      (pprint (macroexpand setter-defmethod-macro)))
+    (eval getter-defmethod-macro)
+    (eval setter-defmethod-macro)
+    t))
 
 ;; SequencePlayerService
 (defmethod rtm-ros-robot-interface
@@ -282,6 +323,10 @@
     (name limit)
     (send self :robothardwareservice_setservoerrorlimit :name name :limit limit)
     )
+  (:calibrate-inertia-sensor
+   ()
+   (send self :robothardwareservice_calibrateInertiaSensor)
+   )
   ;; deprecated
   (:setServoGainPercentage
    (name percentage)
@@ -379,23 +424,19 @@
     ))
   )
 
-;; AbsoluteForceSensorService
+;; RemoveForceSensorLinkOffset
+(def-set-get-param-method 'hrpsys_ros_bridge::OpenHRP_RemoveForceSensorLinkOffsetService_ForceMomentOffsetParam
+  :raw-set-forcemoment-offset-param :raw-get-forcemoment-offset-param
+  :removeforcesensorlinkoffsetservice_setforcemomentoffsetparam :removeforcesensorlinkoffsetservice_getforcemomentoffsetparam
+  :optional-args (list :name 'name))
+
 (defmethod rtm-ros-robot-interface
-  (:_set-forcemoment-offset-param
-   (name &key force-offset moment-offset link-offset-centroid link-offset-mass)
-   (let* ((current-fm-param (send self :get-forcemoment-offset-param name))
-          (param (instance hrpsys_ros_bridge::OpenHRP_AbsoluteForceSensorService_ForceMomentOffsetParam :init
-                           :force_offset (if force-offset force-offset (send current-fm-param :force_offset))
-                           :moment_offset (if moment-offset moment-offset (send current-fm-param :moment_offset))
-                           :link_offset_centroid (if link-offset-centroid link-offset-centroid (send current-fm-param :link_offset_centroid))
-                           :link_offset_mass (if link-offset-mass link-offset-mass (send current-fm-param :link_offset_mass)))))
-     (send self :absoluteforcesensorservice_setforcemomentoffsetparam :name name :i_param param)))
   (:set-forcemoment-offset-param
    (limb &rest args)
    (send* self :force-sensor-method
          limb
          #'(lambda (name base-name target-name &rest _args)
-             (send* self :_set-forcemoment-offset-param name _args))
+             (send* self :raw-set-forcemoment-offset-param name _args))
          :set-forcemoment-offset-param
          args))
   (:get-forcemoment-offset-param
@@ -403,7 +444,7 @@
    (send self :force-sensor-method
          limb
          #'(lambda (name base-name target-name &rest _args)
-             (send (send self :absoluteforcesensorservice_getforcemomentoffsetparam :name name) :i_param))
+             (send self :raw-get-forcemoment-offset-param name))
          :get-forcemoment-offset-param))
   (:load-forcemoment-offset-param
    (fname &key (set-offset t))
@@ -464,11 +505,16 @@
   )
 
 ;; AutoBalancerService
+(def-set-get-param-method
+  'hrpsys_ros_bridge::Openhrp_AutoBalancerService_GaitGeneratorParam
+  :raw-set-gait-generator-param :get-gait-generator-param
+  :autobalancerservice_setgaitgeneratorparam :autobalancerservice_getgaitgeneratorparam)
+
 (defmethod rtm-ros-robot-interface
   (:start-auto-balancer
    (&key (limbs '(:rleg :lleg)))
    (send self :autobalancerservice_startAutoBalancer
-         :limbs (mapcar #'(lambda (x) (format nil "~A" x)) limbs)))
+         :limbs (mapcar #'(lambda (x) (format nil "~A" (string-downcase x))) limbs)))
   (:stop-auto-balancer () (send self :autobalancerservice_stopAutoBalancer))
   (:go-pos-no-wait
    (xx yy th)
@@ -509,22 +555,20 @@
   (:wait-foot-steps
    ()
    (send self :autobalancerservice_waitFootSteps))
+  ;; wrap :set-gait-generator-param to use symbol for default-orbit-type
+  (:set-gait-generator-param
+   (&rest args &key default-orbit-type &allow-other-keys)
+   (send* self :raw-set-gait-generator-param
+          :default-orbit-type (case default-orbit-type
+                                (:shuffling 0)
+                                (:cycloid 1)
+                                (:rectangle 2)
+                                (t default-orbit-type))
+          args))
+  ;; :get-auto-balancer-param and :set-auto-balancer-param is not defined by def-set-get-param-method yet.
   (:get-auto-balancer-param
    ()
    (send (send self :autobalancerservice_getautobalancerparam) :i_param))
-  (:get-gait-generator-param
-   ()
-   (send (send self :autobalancerservice_getgaitgeneratorparam) :i_param))
-  (:set-gait-generator-param
-   (&key default-step-time default-step-height default-double-support-ratio stride-parameter)
-   (let* ((current-param (send self :get-gait-generator-param))
-          (param (instance hrpsys_ros_bridge::Openhrp_AutoBalancerService_GaitGeneratorParam
-                           :init
-                           :default_step_time (if default-step-time default-step-time (send current-param :default_step_time))
-                           :default_step_height (if default-step-height default-step-height (send current-param :default_step_height))
-                           :default_double_support_ratio (if default-double-support-ratio default-double-support-ratio (send current-param :default_double_support_ratio))
-                           :stride_parameter (if stride-parameter stride-parameter (send current-param :stride_parameter)))))
-     (send self :autobalancerservice_setgaitgeneratorparam :i_param param)))
   (:set-auto-balancer-param
    (&key default-zmp-offsets move-base-gain)
    (let* ((current-param (send self :get-auto-balancer-param))
@@ -594,17 +638,12 @@
   )
 
 ;; StabilizerService
+(def-set-get-param-method
+  'hrpsys_ros_bridge::Openhrp_StabilizerService_stParam
+  :set-st-param :get-st-param
+  :stabilizerservice_setparameter :stabilizerservice_getparameter)
+
 (defmethod rtm-ros-robot-interface
-  (:set-st-param
-   (&key k-tpcc-p k-tpcc-x k-brot-p k-brot-tc)
-   (let ((ip (instance hrpsys_ros_bridge::openhrp_stabilizerservice_stparam
-                       :init
-                       :k_tpcc_x k-tpcc-x
-                       :k_tpcc_p k-tpcc-p
-		       :k_brot_p k-brot-p
-		       :k_brot_tc k-brot-tc
-                       )))
-     (send self :stabilizerservice_setparameter :i_param ip)))
   (:start-st
    ()
    (send self :stabilizerservice_startstabilizer)
@@ -612,6 +651,14 @@
   (:stop-st
    ()
    (send self :stabilizerservice_stopstabilizer)
+   )
+  )
+
+;; KalmanFilterService
+(defmethod rtm-ros-robot-interface
+  (:set-kalman-filter-param
+   (&key (q-angle 0.001) (q-rate 0.003) (r-angle 0.03))
+   (send self :kalmanfilterservice_setkalmanfilterparam :q_angle q-angle :q_rate q-rate :r_angle r-angle)
    )
   )
 
