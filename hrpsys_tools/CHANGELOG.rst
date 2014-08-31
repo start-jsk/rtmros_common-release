@@ -2,6 +2,12 @@
 Changelog for package hrpsys_tools
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.2.2 (2014-08-31)
+------------------
+* (hrpsys.launch) : Add config_file setting for HGcontroller
+* (compile_robot_model.cmake, hrpsys.launch, hrpsys_tools_config.py) Add argument to use Unstable RTC List and configure it from cmake discussed in https://github.com/start-jsk/rtmros_gazebo/pull/61
+* Contributors: Shunichi Nozawa
+
 1.2.1 (2014-06-23)
 ------------------
 * hrpsys_tools/launch/hrpsys.launch: Added ThermoLimiter/ThermoEstimator definition to hrpsys.launch
