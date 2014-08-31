@@ -1,22 +1,22 @@
-From 49a9c97c4f29e781279480b3cb512ff990c26900 Mon Sep 17 00:00:00 2001
+From 0aeff4de5dbc8f39aaa3479038c844c6b54f1750 Mon Sep 17 00:00:00 2001
 From: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
-Date: Thu, 15 May 2014 18:54:06 +0900
-Subject: [PATCH 1/2] add ros-groovy-pr2-controllrs to Depends
+Date: Mon, 23 Jun 2014 16:41:19 +0900
+Subject: [PATCH] add ros-groovy-pr2-controllrs to Depends
 
 ---
  debian/control.em |    4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/debian/control.em b/debian/control.em
-index 35e0893..c82a91e 100644
+index 8b9cd67..1930620 100644
 --- a/debian/control.em
 +++ b/debian/control.em
 @@ -2,11 +2,11 @@ Source: @(Package)
  Section: misc
  Priority: extra
  Maintainer: @(Maintainer)
--Build-Depends: debhelper (>= 7.0.50~), @(', '.join(BuildDepends))
-+Build-Depends: debhelper (>= 7.0.50~), @(', '.join(BuildDepends)), ros-groovy-pr2-controllers
+-Build-Depends: debhelper (>= @(debhelper_version).0.0), @(', '.join(BuildDepends))
++Build-Depends: debhelper (>= @(debhelper_version).0.0), @(', '.join(BuildDepends)), ros-groovy-pr2-controllers
  Homepage: @(Homepage)
  Standards-Version: 3.9.2
  
