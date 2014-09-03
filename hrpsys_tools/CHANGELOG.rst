@@ -2,6 +2,9 @@
 Changelog for package hrpsys_tools
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.2.3 (2014-09-03)
+------------------
+
 1.2.2 (2014-08-31)
 ------------------
 * (hrpsys.launch) : Add config_file setting for HGcontroller
