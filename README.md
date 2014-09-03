@@ -1,3 +1,31 @@
+## rtmros_common (groovy) - 1.2.3-0
+
+The packages in the `rtmros_common` repository were released into the `groovy` distro by running `/usr/bin/bloom-release rtmros_common --track groovy --rosdistro groovy` on `Wed, 03 Sep 2014 06:47:05 -0000`
+
+These packages were released:
+- `hrpsys_ros_bridge`
+- `hrpsys_tools`
+- `openrtm_ros_bridge`
+- `openrtm_tools`
+- `rosnode_rtc`
+- `rtmbuild`
+- `rtmros_common`
+
+Version of package(s) in repository `rtmros_common`:
+- upstream repository: https://github.com/start-jsk/rtmros_common.git
+- release repository: https://github.com/tork-a/rtmros_common-release.git
+- rosdistro version: `1.2.2-1`
+- old version: `1.2.2-1`
+- new version: `1.2.3-0`
+
+Versions of tools used:
+- bloom version: `0.5.11`
+- catkin_pkg version: `0.2.4`
+- rosdep version: `0.10.30`
+- rosdistro version: `0.3.5`
+- vcstools version: `0.1.35`
+
+
 ## rtmros_common (hydro) - 1.2.2-0
 
 The packages in the `rtmros_common` repository were released into the `hydro` distro by running `/usr/bin/bloom-release rtmros_common --track hydro --rosdistro hydro` on `Sun, 31 Aug 2014 02:26:19 -0000`
