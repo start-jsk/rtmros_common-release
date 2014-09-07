@@ -1,0 +1,69 @@
+ros-hydro-rosnode-rtc (1.2.4-1quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 07 Sep 2014 15:00:00 -0000
+
+ros-hydro-rosnode-rtc (1.2.3-1quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 02 Sep 2014 15:00:00 -0000
+
+ros-hydro-rosnode-rtc (1.2.2-1quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sat, 30 Aug 2014 15:00:00 -0000
+
+ros-hydro-rosnode-rtc (1.2.1-1quantal) quantal; urgency=high
+
+  * (package.xml files) Update repository URLs
+  * Contributors: Isaac Isao Saito
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 22 Jun 2014 15:00:00 -0000
+
+ros-hydro-rosnode-rtc (1.2.0-1quantal) quantal; urgency=high
+
+  * bump to 1.2.0for hrpsys 315.2.0
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 13 May 2014 15:00:00 -0000
+
+ros-hydro-rosnode-rtc (1.0.12-1quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Mon, 05 May 2014 15:00:00 -0000
+
+ros-hydro-rosnode-rtc (1.0.11-1quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 15 Apr 2014 15:00:00 -0000
+
+ros-hydro-rosnode-rtc (1.0.10-1quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Mon, 14 Apr 2014 15:00:00 -0000
+
+ros-hydro-rosnode-rtc (1.0.9-1quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 13 Apr 2014 15:00:00 -0000
+
+ros-hydro-rosnode-rtc (1.0.8-1quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 13 Apr 2014 15:00:00 -0000
+
+ros-hydro-rosnode-rtc (1.0.7-1quantal) quantal; urgency=high
+
+  * (package.xml) move rostopic from test_depend to build_depend
+  * add rosdep roscpp_tutorials
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Wed, 19 Mar 2014 15:00:00 -0000
+
+
