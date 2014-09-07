@@ -1,4 +1,4 @@
-From 77cfc2c51bde1f5142f7e6f77e2f71ae6962d4ec Mon Sep 17 00:00:00 2001
+From e60c525ce0d58ed4019ff4af06c3d60308e89d46 Mon Sep 17 00:00:00 2001
 From: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
 Date: Mon, 23 Jun 2014 16:41:19 +0900
 Subject: [PATCH] add ros-groovy-pr2-controllrs to Depends
