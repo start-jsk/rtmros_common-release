@@ -1,0 +1,75 @@
+ros-groovy-openrtm-ros-bridge (1.2.4-0quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 07 Sep 2014 15:00:00 -0000
+
+ros-groovy-openrtm-ros-bridge (1.2.3-0quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 02 Sep 2014 15:00:00 -0000
+
+ros-groovy-openrtm-ros-bridge (1.2.2-0quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sat, 30 Aug 2014 15:00:00 -0000
+
+ros-groovy-openrtm-ros-bridge (1.2.1-0quantal) quantal; urgency=high
+
+  * (index.rst) Add usage api doc
+  * (package.xml files) Update repository URLs
+  * Contributors: Isaac IY Saito, Isaac Isao Saito
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 22 Jun 2014 15:00:00 -0000
+
+ros-groovy-openrtm-ros-bridge (1.2.0-0quantal) quantal; urgency=high
+
+  * bump to 1.2.0for hrpsys 315.2.0
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 13 May 2014 15:00:00 -0000
+
+ros-groovy-openrtm-ros-bridge (1.0.12-0quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Mon, 05 May 2014 15:00:00 -0000
+
+ros-groovy-openrtm-ros-bridge (1.0.11-0quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 15 Apr 2014 15:00:00 -0000
+
+ros-groovy-openrtm-ros-bridge (1.0.10-0quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Mon, 14 Apr 2014 15:00:00 -0000
+
+ros-groovy-openrtm-ros-bridge (1.0.9-0quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 13 Apr 2014 15:00:00 -0000
+
+ros-groovy-openrtm-ros-bridge (1.0.8-0quantal) quantal; urgency=high
+
+  * use start_omninames.sh for rosdevel build environment, see #400 <https://github.com/start-jsk/rtmros_common/issues/400>
+  * Contributors: Kei Okada
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 13 Apr 2014 15:00:00 -0000
+
+ros-groovy-openrtm-ros-bridge (1.0.7-0quantal) quantal; urgency=high
+
+  * openrtm_ros_bridge: (test_myservice_rosbridge.test) add retry=4
+  * openrtm_ros_bridge: mv samples/test_myservice_rosbridge.* -> test/test_myservice_rosbridge.* and add test to CMakeLists.txt/catkin.cmake
+  * disable openrtm_ros_bridge/rosbuil test for now
+  * Wrong catkin macro (CATKIN-DEPENDS to CATKIN_DEPENDS).
+  * use pkg-config to find directories
+  * disable test_myservice_rosbridge.launch, is is not working right now
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Wed, 19 Mar 2014 15:00:00 -0000
+
+
