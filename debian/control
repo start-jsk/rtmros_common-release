@@ -1,0 +1,12 @@
+Source: ros-groovy-hrpsys-tools
+Section: misc
+Priority: extra
+Maintainer: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
+Build-Depends: debhelper (>= 9.0.0), ros-groovy-catkin, ros-groovy-hrpsys, ros-groovy-rostest
+Homepage: http://ros.org/wiki/hrpsys_tools
+Standards-Version: 3.9.2
+
+Package: ros-groovy-hrpsys-tools
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-groovy-hrpsys, ros-groovy-openrtm-tools
+Description: The hrpsys_tools package
