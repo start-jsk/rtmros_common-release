@@ -2,6 +2,11 @@
 Changelog for package openrtm_ros_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.2.5 (2014-10-04)
+------------------
+* Add depend on std_msgs
+* Contributors: Kei Okada
+
 1.2.4 (2014-09-08)
 ------------------
 
