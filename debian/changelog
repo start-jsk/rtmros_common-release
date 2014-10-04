@@ -1,0 +1,90 @@
+ros-hydro-rtmbuild (1.2.5-1quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Fri, 03 Oct 2014 15:00:00 -0000
+
+ros-hydro-rtmbuild (1.2.4-1quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 07 Sep 2014 15:00:00 -0000
+
+ros-hydro-rtmbuild (1.2.3-1quantal) quantal; urgency=high
+
+  * fix rtmbuild.cmake
+  * Contributors: terasawa
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 02 Sep 2014 15:00:00 -0000
+
+ros-hydro-rtmbuild (1.2.2-1quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sat, 30 Aug 2014 15:00:00 -0000
+
+ros-hydro-rtmbuild (1.2.1-1quantal) quantal; urgency=high
+
+  * (idl2srv.py) : Check pointer or not ;; At previous revision, non-pointer variables are deleted
+  * (idl2srv.py) : use random string for idl2srv generated file
+  * (package.xml files) Update repository URLs
+  * Contributors: Isaac Isao Saito, Kei Okada, Shunichi Nozawa
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 22 Jun 2014 15:00:00 -0000
+
+ros-hydro-rtmbuild (1.2.0-1quantal) quantal; urgency=high
+
+  * bump to 1.2.0 for hrpsys 315.2.0
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 13 May 2014 15:00:00 -0000
+
+ros-hydro-rtmbuild (1.0.12-1quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Mon, 05 May 2014 15:00:00 -0000
+
+ros-hydro-rtmbuild (1.0.11-1quantal) quantal; urgency=high
+
+  * compile idl files at once, omniidl -bpython support compile multiple idl
+  * Contributors: Kei Okada
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 15 Apr 2014 15:00:00 -0000
+
+ros-hydro-rtmbuild (1.0.10-1quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Mon, 14 Apr 2014 15:00:00 -0000
+
+ros-hydro-rtmbuild (1.0.9-1quantal) quantal; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 13 Apr 2014 15:00:00 -0000
+
+ros-hydro-rtmbuild (1.0.8-1quantal) quantal; urgency=high
+
+  * fix to work on rosbuild
+  * fix for installed test, use rtmbuild_SOURCE_PREFIX to check if devel/src environment
+  * rtmbuild: install test directory so that others can uses this
+  * rtmbuild: rewrite rtmbulid.cmake
+  * rtmbuild: cleanup catkin.cmake and put everything into CMakeLists.txt
+  * Contributors: Kei Okada
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 13 Apr 2014 15:00:00 -0000
+
+ros-hydro-rtmbuild (1.0.7-1quantal) quantal; urgency=high
+
+  * add depends from RTMBUILD__rm_idl2srv to _generate_messages_cpp, so that we can generate message in the beginning
+  * rtmbuild: check if openrtm_aist_PREFIX/lib/openrtm_aist/bin exists, if not, try rospack find, this happens when you compile your catkin code over rosbuild compiled rtmbuild (that never happens?)
+  * rtmbuild: add test program to see if rtmbuild works
+  * (rtmbuild.cmake, idl2srv.py) fix for rtmbuild/deb environment
+  * (rtmbuild.cmake) display variables on both rtmbuild and cmake
+  * (rtmbuild.cmake) add find_package(PkgConfig)
+  * Wrong catkin macro (CATKIN-DEPENDS to CATKIN_DEPENDS).
+  * Contributors: Kei Okada
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Wed, 19 Mar 2014 15:00:00 -0000
+
+
