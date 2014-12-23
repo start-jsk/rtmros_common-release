@@ -1,0 +1,34 @@
+From 83f2d047dfe013310201eff9ba989c051ea3a6ca Mon Sep 17 00:00:00 2001
+From: Kei Okada <kei.okada@gmail.com>
+Date: Tue, 23 Dec 2014 18:40:16 +0900
+Subject: [PATCH] indigo does not provide pr2_controllers yet
+
+---
+ package.xml | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/package.xml b/package.xml
+index a4c6d0d..2b25d3a 100644
+--- a/package.xml
++++ b/package.xml
+@@ -41,7 +41,7 @@
+   <build_depend>nav_msgs</build_depend>
+   <build_depend>net-tools</build_depend>
+   <build_depend>pkg-config</build_depend>
+-  <build_depend>pr2_controllers</build_depend> <!-- groovy does not have catkin pr2_controllers package -->
++  <!-- <build_depend>pr2_controllers</build_depend> -->
+   <build_depend>procps</build_depend>
+   <build_depend>python-rosdep</build_depend>
+   <build_depend>robot_pose_ekf</build_depend>
+@@ -73,7 +73,7 @@
+   <run_depend>hrpsys_tools</run_depend>
+   <run_depend>image_transport</run_depend>
+   <run_depend>nav_msgs</run_depend>
+-  <run_depend>pr2_controllers</run_depend> <!-- groovy does not have catkin pr2_controllers package -->
++  <!-- <run_depend>pr2_controllers</run_depend> -->
+   <run_depend>python-psutil</run_depend>
+   <run_depend>robot_pose_ekf</run_depend>
+   <run_depend>robot_state_publisher</run_depend>
+-- 
+1.9.1
+
