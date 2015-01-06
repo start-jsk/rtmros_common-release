@@ -1,4 +1,4 @@
-From 83f2d047dfe013310201eff9ba989c051ea3a6ca Mon Sep 17 00:00:00 2001
+From 4b72225a31b78b2542b181d111bb6391c736eb3a Mon Sep 17 00:00:00 2001
 From: Kei Okada <kei.okada@gmail.com>
 Date: Tue, 23 Dec 2014 18:40:16 +0900
 Subject: [PATCH] indigo does not provide pr2_controllers yet
