@@ -286,10 +286,30 @@
 (defmethod rtm-ros-robot-interface
   (:set-base-pose
    (&optional base-coords (tm 0.1))
+   (warn ";; :set-base-pose is deprecated. Use :set-base-coords~%")
    (unless base-coords
      (setq base-coords (send robot :worldcoords)))
    (send self :sequenceplayerservice_setbasepos :pos (scale 0.001 (send base-coords :pos)) :tm tm)
    (send self :sequenceplayerservice_setbaserpy :rpy (coerce (reverse (car (send base-coords :rpy-angle))) float-vector) :tm tm))
+  (:set-base-coords
+   (base-coords tm)
+   "Set base coordinates in the world frame.
+    base-coords is Euslisp coords and tm is [ms]."
+   (send self :set-base-pos (send base-coords :worldpos) tm)
+   (send self :set-base-rpy (coerce (reverse (car (rpy-angle (send base-coords :worldrot)))) float-vector) tm)
+   )
+  (:set-base-pos
+   (base-pos tm)
+   "Set base pos in the world frame.
+    base-pos is [mm] and tm is [ms]."
+   (send self :sequenceplayerservice_setbasepos :pos (scale 0.001 base-pos) :tm (* 0.001 tm)) ;; [mm]->[m], [ms]->[s]
+   )
+  (:set-base-rpy
+   (base-rpy tm)
+   "Set base rpy in the world frame.
+    base-rpy is [rad] and tm is [ms]."
+   (send self :sequenceplayerservice_setbaserpy :rpy base-rpy :tm (* 0.001 tm)) ;; [ms]->[s]
+   )
   (:wait-interpolation-of-group
    (groupname)
    (send self :sequenceplayerservice_waitinterpolationofgroup :gname groupname))
@@ -328,6 +348,8 @@
    )
   (:set-ref-force
    (force tm &optional (limb :arms) &key (update-robot-state t))
+   "Set reference force [N]. tm is interpolation time [ms].
+    limb should be limb symbol name such as :rarm, :larm, :rleg, :lleg, :arms, or :legs."
    (if update-robot-state (send self :state))
    (let ((limbs (case limb
                       (:arms (list :rarm :larm))
@@ -342,6 +364,8 @@
      ))
   (:set-ref-moment
    (moment tm &optional (limb :arms) &key (update-robot-state t))
+   "Set reference moment [Nm]. tm is interpolation time [ms].
+    limb should be limb symbol name such as :rarm, :larm, :rleg, :lleg, :arms, or :legs."
    (if update-robot-state (send self :state))
    (let ((limbs (case limb
                       (:arms (list :rarm :larm))
@@ -418,65 +442,58 @@
 
 ;; ImpedanceControllerService
 (defmethod rtm-ros-robot-interface
-  ;;
-  ;; usage:
-  ;;   (send *ri* :start-impedance :rarm ..), (send *ri* :stop-impedance :rarm ..), (send *ri* :set-impedance-controller-param :rarm :M-p 200) ...
   (:start-impedance
    (limb &rest args)
-   (send* self :set-impedance-controller-param limb args))
-  (:stop-impedance
+   "Start impedance controller mode.
+    limb should be limb symbol name such as :rarm, :larm, :rleg, :lleg, :arms, or :legs."
+   (if args
+       (progn
+         (send* self :set-impedance-controller-param limb args)
+         (send self :raw-start-impedance limb))
+     (send self :raw-start-impedance limb)))
+  (:raw-start-impedance
    (limb)
    (send self :force-sensor-method
          limb
-         #'(lambda (name base-name target-name &rest _args)
-             (send self :impedancecontrollerservice_deleteimpedancecontroller :name name))
+         #'(lambda (name &rest _args)
+             (send self :impedancecontrollerservice_startimpedancecontroller :name (string-downcase name)))
+         :raw-start-impedance))
+  (:stop-impedance
+   (limb)
+   "Stop impedance controller mode.
+    limb should be limb symbol name such as :rarm, :larm, :rleg, :lleg, :arms, or :legs."
+   (send self :force-sensor-method
+         limb
+         #'(lambda (name &rest _args)
+             (send self :impedancecontrollerservice_stopimpedancecontroller :name (string-downcase name)))
          :stop-impedance))
   (:set-impedance-controller-param
    (limb &rest args)
-   (send self :force-sensor-method
-         limb
-         #'(lambda (name base-name target-name &rest _args)
-             (send* self :raw-set-impedance-controller-param name :base-name base-name :target-name target-name args))
-         :set-impedance-controller-param))
+   "Set impedance controller parameter like (send *ri* :set-impedance-controller-param :rarm :K-p 400).
+    limb should be limb symbol name such as :rarm, :larm, :rleg, :lleg, :arms, or :legs."
+   (send* self :force-sensor-method
+          limb
+          #'(lambda (name &rest _args)
+              (send* self :raw-set-impedance-controller-param (string-downcase name) args))
+          :set-impedance-controller-param
+          args))
   (:get-impedance-controller-param
    (limb)
+   "Get impedance controller parameter.
+    limb should be limb symbol name such as :rarm, :larm, :rleg, :lleg, :arms, or :legs."
    (send self :force-sensor-method
          limb
-         #'(lambda (name base-name target-name &rest _args)
-             (send (send self :raw-get-impedance-controller-param name) :i_param))
-         :get-impedance-controller-param))
-  (:get-impedance-controller-param
-   (limb)
-   (send self :force-sensor-method
-         limb
-         #'(lambda (name base-name target-name &rest _args)
-             (send self :raw-get-impedance-controller-param name))
+         #'(lambda (name &rest _args)
+             (send self :raw-get-impedance-controller-param (string-downcase name)))
          :get-impedance-controller-param))
   (:force-sensor-method
    (limb method-func method-name &rest args)
    (cond
-    ((stringp limb)
-     (apply method-func
-            limb nil nil args))
     ((eq limb :legs) (mapcar #'(lambda (l) (send* self method-name l args)) '(:rleg :lleg)))
     ((eq limb :arms) (mapcar #'(lambda (l) (send* self method-name l args)) '(:rarm :larm)))
-    ((and (substringp ":v" (format nil "~A" limb))
-          (find-method robot (read-from-string (format nil ":~A" (string-left-trim ":v" (format nil "~A" limb))))))
-     (let ((rlimb (read-from-string (format nil ":~A" (string-left-trim ":v" (format nil "~A" limb))))))
-       (apply method-func
-              (format nil "v~C~A" (elt (string-left-trim ":v" (format nil "~A" limb)) 0) (case rlimb ((:rarm :larm) "hsensor") (t "fsensor")))
-              (send (send (send (send robot rlimb :root-link) :parent) :joint) :name)
-              (send (send (send (send robot rlimb :end-coords) :parent) :joint) :name)
-              args)))
-    ((car (send robot limb :force-sensors))
-     (let ((fs (car (send robot limb :force-sensors)))
-           (base-name (send (send (send (send robot limb :root-link) :parent) :joint) :name)))
-       (apply method-func
-              (string-downcase (send fs :name))
-              (if base-name base-name "")
-              (send (send (send fs :parent) :joint) :name)
-              args)))
-    (t ) ;; virtual force sensor is not supported in this file
+    ((and (find-method robot limb) (car (send robot limb :force-sensors)))
+     (apply method-func limb args))
+    (t (error ";; No such limb or force sensor is defined for ~A~%." limb))
     ))
   )
 
@@ -491,16 +508,16 @@
    (limb &rest args)
    (send* self :force-sensor-method
          limb
-         #'(lambda (name base-name target-name &rest _args)
-             (send* self :raw-set-forcemoment-offset-param name _args))
+         #'(lambda (name &rest _args)
+             (send* self :raw-set-forcemoment-offset-param (send (car (send robot name :force-sensors)) :name) _args))
          :set-forcemoment-offset-param
          args))
   (:get-forcemoment-offset-param
    (limb)
    (send self :force-sensor-method
          limb
-         #'(lambda (name base-name target-name &rest _args)
-             (send self :raw-get-forcemoment-offset-param name))
+         #'(lambda (name &rest _args)
+             (send self :raw-get-forcemoment-offset-param (send (car (send robot name :force-sensors)) :name)))
          :get-forcemoment-offset-param))
   (:load-forcemoment-offset-param
    (fname &key (set-offset t))
@@ -529,48 +546,59 @@
    )
   (:reset-force-moment-offset-arms
    ()
+   "Remove force and moment offset for :rarm and :larm"
    (send self :reset-force-moment-offset '(:rarm :larm)))
   (:reset-force-moment-offset
    (limbs)
+   "Remove force and moment offsets. limbs should be list of limb symbol name."
    (send self :_reset-force-moment-offset limbs :force)
    (send self :_reset-force-moment-offset limbs :moment)
    )
   (:_reset-force-moment-offset
    (limbs f/m &key (itr 10))
-   ;; f_ext = Rs * (s^f_s - s^f_off) - m_l * g
-   ;; n_ext = Rs * (s^n_s - s^n_off) - (Rs * c_l) x (m_l * g)
-   ;; s^f_off = s^f_s - Rs^T * (f_ext + m_l * g)
-   ;; s^n_off = s^n_s - Rs^T * (n_ext + (Rs * c_l) x (m_l * g))
-   (labels ((calc-off
-             (alimb)
-             (unix:usleep 10000)
-             (send self :state)
-             (let* ((abs-v (send self (read-from-string (format nil ":absolute-~A-vector" (string-downcase f/m))) alimb))
-                    (param (send self :get-forcemoment-offset-param alimb))
-                    (off (v+ (send param (if (eq f/m :force) :force_offset :moment_offset))
-                             (send (car (send robot alimb :force-sensors)) :inverse-rotate-vector abs-v))))
-               (list off abs-v))))
-     (mapcar #'(lambda (alimb)
-                 (let* ((ret (mapcar #'(lambda (x) (calc-off alimb)) (make-list itr)))
-                        (off (mapcar #'car ret))
-                        (abs-v (mapcar #'cadr ret)))
-                   (send self :set-forcemoment-offset-param alimb
-                         (if (eq f/m :force) :force-offset :moment-offset)
-                         (scale (/ 1.0 (length off)) (reduce #'v+ off)))
-                   (unix:usleep 10000)
-                   ;; check ;; compare sensor value before & after resetting
-                   (format t ";; ~A error of ~A ;; ~A[~A] -> ~A[~A]~%"
-                           (string-downcase f/m) alimb
-                           (norm (scale (/ 1.0 (length abs-v)) (reduce #'v+ abs-v)))
-                           (if (eq f/m :force) "N" "Nm")
-                           (norm
-                            (scale (/ 1.0 itr)
-                                   (reduce #'v+
-                                           (mapcar #'(lambda (x) (send self :state (read-from-string (format nil ":absolute-~A-vector" (string-downcase f/m))) alimb))
-                                                   (make-list itr)))))
-                           (if (eq f/m :force) "N" "Nm"))
-                   ))
-             limbs)))
+   (let* ((params (mapcar #'(lambda (alimb) (send self :get-forcemoment-offset-param alimb)) limbs))
+          (nominal-mgs (mapcar #'(lambda (param) (scale (* 1e-3 (send param :link_offset_mass)) *g-vec*)) params)))
+     (labels ((calc-off
+               (alimb param nominal-mg)
+               (v+ (send self (if (eq f/m :force) :force-vector :moment-vector) alimb)
+                   (if (eq f/m :force)
+                       (send (car (send robot alimb :force-sensors)) :inverse-rotate-vector nominal-mg)
+                     (v* (send param :link_offset_centroid) (send (car (send robot alimb :force-sensors)) :inverse-rotate-vector nominal-mg)))))
+              (get-avg-fm
+               ()
+               (let ((fm (mapcar #'(lambda (i)
+                                     (send self :state)
+                                     (mapcar #'(lambda (alimb) (send self (if (eq f/m :force) :off-force-vector :off-moment-vector) alimb)) limbs))
+                                 (make-list itr))))
+                 (mapcar #'(lambda (alimb)
+                             (let ((idx (position alimb limbs)))
+                               (vector-mean (mapcar #'(lambda (d) (elt d idx)) fm))))
+                         limbs))))
+       ;; estimate offsets
+       (let* ((tmp-fm-offsets (mapcar #'(lambda (i)
+                                          (send self :state)
+                                          (mapcar #'calc-off limbs params nominal-mgs))
+                                      (make-list itr)))
+              (new-fm-offsets (mapcar #'(lambda (alimb)
+                                          (let ((idx (position alimb limbs)))
+                                            (vector-mean (mapcar #'(lambda (d) (elt d idx)) tmp-fm-offsets))))
+                                      limbs))
+              (org-fm-list (get-avg-fm)))
+         ;; set offsets
+         (mapcar #'(lambda (alimb new-fm-offset)
+                     (send self :set-forcemoment-offset-param alimb
+                           (if (eq f/m :force) :force-offset :moment-offset)
+                           new-fm-offset))
+                 limbs new-fm-offsets)
+         (unix:usleep 10000)
+         ;; check ;; compare sensor value before & after resetting
+         (mapcar #'(lambda (alimb org-fm new-fm)
+                     (format t ";; ~A error of ~A ;; ~A[~A] -> ~A[~A]~%"
+                             (string-downcase f/m) alimb
+                             (norm org-fm) (if (eq f/m :force) "N" "Nm")
+                             (norm new-fm) (if (eq f/m :force) "N" "Nm")))
+                 limbs org-fm-list (get-avg-fm))
+         ))))
   )
 
 ;; AutoBalancerService
@@ -598,19 +626,11 @@
    )
   (:set-foot-steps-no-wait
    (fs)
-   (let ((init-coords
-          (midcoords 0.5
-                     (send self :abc-footstep->eus-footstep (send (send self :get-foot-step-param) :rleg_coords))
-                     (send self :abc-footstep->eus-footstep (send (send self :get-foot-step-param) :lleg_coords)))))
-     (send self :autobalancerservice_setfootsteps
-           :fs
-           (mapcar #'(lambda (f)
-                       (let ((lf (send (send init-coords :copy-worldcoords)
-                                       :transform f)))
-                         (send lf :name (send f :name))
-                         (send self :eus-footstep->abc-footstep lf)))
-                   fs))
-     ))
+   (send self :autobalancerservice_setfootsteps
+         :fs
+         (mapcar #'(lambda (f)
+                     (send self :eus-footstep->abc-footstep f))
+                 fs)))
   (:set-foot-steps
    (fs)
    (send self :set-foot-steps-no-wait fs)
@@ -621,6 +641,21 @@
   (:go-stop
    ()
    (send self :autobalancerservice_goStop))
+  (:calc-go-velocity-param-from-velocity-center-offset
+   (ang velocity-center-offset)
+   "Calculate go-velocity velocities from rotation center and rotation angle.
+    ang is rotation angle [rad]. velocity-center-offset is velocity center offset [mm] from foot mid coords."
+   (let* ((default-step-time (send (send self :get-gait-generator-param) :default_step_time)) ;; [s]
+          (cen (make-cascoords :pos velocity-center-offset))
+          (cc (make-cascoords)))
+     (send cen :assoc cc)
+     (send cen :rotate (deg2rad ang) :z)
+     (let ((tf (send (make-coords) :transformation cc)))
+       (list
+        (/ (* 1e-3 (elt (send tf :worldpos) 0)) default-step-time) ;; velx [m/s]
+        (/ (* 1e-3 (elt (send tf :worldpos) 1)) default-step-time) ;; vely [m/s]
+        (/ ang default-step-time) ;; velth [rad/s]
+        ))))
   (:wait-foot-steps
    ()
    (send self :autobalancerservice_waitFootSteps))
@@ -647,7 +682,10 @@
    ()
    (send (send self :autobalancerservice_getautobalancerparam) :i_param))
   (:set-auto-balancer-param
-   (&key default-zmp-offsets move-base-gain)
+   (&key default-zmp-offsets move-base-gain
+         graspless-manip-arm graspless-manip-mode
+         graspless-manip-p-gain
+         graspless-manip-reference-trans-pos graspless-manip-reference-trans-rot)
    (let* ((current-param (send self :get-auto-balancer-param))
           (param (instance hrpsys_ros_bridge::Openhrp_AutoBalancerService_AutoBalancerParam
                            :init
@@ -659,7 +697,19 @@
                                                                                  default-zmp-offsets)))
                                  dzo)
                              (send current-param :default_zmp_offsets))
-                           :move_base_gain (if move-base-gain move-base-gain (send current-param :move_base_gain)))))
+                           :move_base_gain (if move-base-gain move-base-gain (send current-param :move_base_gain))
+                           :graspless_manip_mode (if graspless-manip-mode graspless-manip-mode (send current-param :graspless_manip_mode))
+                           :graspless_manip_arm (if graspless-manip-arm graspless-manip-arm (send current-param :graspless_manip_arm))
+                           :graspless_manip_p_gain (if graspless-manip-p-gain graspless-manip-p-gain (send current-param :graspless_manip_p_gain))
+                           :graspless_manip_reference_trans_pos
+                           (if graspless-manip-reference-trans-pos
+                               (scale 1e-3 graspless-manip-reference-trans-pos)
+                             (send current-param :graspless_manip_reference_trans_pos))
+                           :graspless_manip_reference_trans_rot
+                           (if graspless-manip-reference-trans-rot
+                               (matrix2quaternion graspless-manip-reference-trans-rot)
+                             (send current-param :graspless_manip_reference_trans_rot))
+                           )))
      (send self :autobalancerservice_setautobalancerparam :i_param param)))
   (:abc-footstep->eus-footstep
    (f)
@@ -751,7 +801,7 @@
 (defun print-end-effector-parameter-conf-from-robot
   (rb)
   (format t "end_effectors:")
-  (dolist (l '(:rarm :larm :rleg :lleg))
+  (dolist (l (remove-if-not #'(lambda (x) (send rb x)) '(:rarm :larm :rleg :lleg)))
     (let ((rl (send (send (send rb l :root-link) :parent) :joint)))
       (format t " ~A,~A,~A," (string-downcase (string l)) (send (send (send rb l :end-coords :parent) :joint) :name) (if rl (send rl :name) "WAIST"))
       (let* ((dif (send (send rb l :end-coords :parent) :transformation (send rb l :end-coords)))
