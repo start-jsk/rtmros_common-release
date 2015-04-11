@@ -1,4 +1,4 @@
-From 3ba1327aea7bebfed34ab660ecf6a0eace2eea86 Mon Sep 17 00:00:00 2001
+From ea92304a7e947ef6249b9e277e8afa437967e721 Mon Sep 17 00:00:00 2001
 From: Kei Okada <kei.okada@gmail.com>
 Date: Tue, 23 Dec 2014 18:40:16 +0900
 Subject: [PATCH] indigo does not provide pr2_controllers yet
@@ -8,7 +8,7 @@ Subject: [PATCH] indigo does not provide pr2_controllers yet
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/package.xml b/package.xml
-index 8053a33..4743cf0 100644
+index 27116b8..b883b7b 100644
 --- a/package.xml
 +++ b/package.xml
 @@ -41,7 +41,7 @@
