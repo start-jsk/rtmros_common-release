@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(hrpsys_ros_bridge)
 
 # call catkin depends
-find_package(catkin REQUIRED COMPONENTS rtmbuild roscpp rostest sensor_msgs robot_state_publisher actionlib control_msgs tf camera_info_manager hrpsys_tools image_transport dynamic_reconfigure nav_msgs geometry_msgs) # pr2_controllers_msgs robot_monitor geometry_msgs
+find_package(catkin REQUIRED COMPONENTS rtmbuild roscpp rostest sensor_msgs robot_state_publisher actionlib control_msgs tf camera_info_manager hrpsys_tools image_transport dynamic_reconfigure nav_msgs geometry_msgs pr2_controllers_msgs pr2_msgs) # robot_monitor
 find_package(hrpsys QUIET) # on indigo, hrpsys is not ros package
 if(NOT ${hrpsys_FOUND})
   find_package(PkgConfig)
@@ -103,16 +103,6 @@ rtmbuild_add_executable(HrpsysSeqStateROSBridge src/HrpsysSeqStateROSBridgeImpl.
 rtmbuild_add_executable(ImageSensorROSBridge src/ImageSensorROSBridge.cpp src/ImageSensorROSBridgeComp.cpp)
 rtmbuild_add_executable(HrpsysJointTrajectoryBridge src/HrpsysJointTrajectoryBridge.cpp src/HrpsysJointTrajectoryBridgeComp.cpp)
 
-add_custom_command(
-  OUTPUT  ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_BIN_DESTINATION}/rtmlaunch ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_BIN_DESTINATION}/rtmtest
-  COMMAND cmake -E copy scripts/rtmlaunch ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_BIN_DESTINATION}/rtmlaunch
-  COMMAND cmake -E copy scripts/rtmtest   ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_BIN_DESTINATION}/rtmtest
-  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-  DEPENDS scripts/rtmlaunch scripts/rtmtest)
-add_custom_target(copy_rtm_script ALL DEPENDS ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_BIN_DESTINATION}/rtmlaunch ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_BIN_DESTINATION}/rtmtest)
-
-install(PROGRAMS scripts/rtmlaunch scripts/rtmtest scripts/rtmstart.py
-  DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
 install(DIRECTORY launch euslisp srv idl scripts models test cmake
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   USE_SOURCE_PERMISSIONS)
