@@ -1,3 +1,31 @@
+## rtmros_common (hydro) - 1.2.9-0
+
+The packages in the `rtmros_common` repository were released into the `hydro` distro by running `/usr/bin/bloom-release rtmros_common -t hydro -r hydro` on `Sat, 11 Apr 2015 15:41:56 -0000`
+
+These packages were released:
+- `hrpsys_ros_bridge`
+- `hrpsys_tools`
+- `openrtm_ros_bridge`
+- `openrtm_tools`
+- `rosnode_rtc`
+- `rtmbuild`
+- `rtmros_common`
+
+Version of package(s) in repository `rtmros_common`:
+- upstream repository: https://github.com/start-jsk/rtmros_common.git
+- release repository: https://github.com/tork-a/rtmros_common-release.git
+- rosdistro version: `1.2.8-0`
+- old version: `1.2.8-0`
+- new version: `1.2.9-0`
+
+Versions of tools used:
+- bloom version: `0.5.19`
+- catkin_pkg version: `0.2.6`
+- rosdep version: `0.11.2`
+- rosdistro version: `0.4.0`
+- vcstools version: `0.1.36`
+
+
 ## rtmros_common (indigo) - 1.2.9-0
 
 The packages in the `rtmros_common` repository were released into the `indigo` distro by running `/usr/bin/bloom-release rtmros_common -t indigo -r indigo` on `Sat, 11 Apr 2015 15:20:21 -0000`
