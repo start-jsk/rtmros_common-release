@@ -6,15 +6,16 @@ except:
 
 import OpenRTM_aist.RTM_IDL # for catkin
 
+import omniORB
+
 import rospy
 from diagnostic_msgs.msg import *
 
 import os
-import hrpsys
 import rtm
 
-from rtm import *
-from OpenHRP import *
+from hrpsys import hrpsys_config
+import OpenHRP
 
 import socket
 import time
@@ -32,7 +33,7 @@ from tf.transformations import *
 def rtc_init () :
     global ms, co, co_svc, root_link_name, root_link_offset
 
-    initCORBA()
+    rtm.initCORBA()
     ms = rtm.findRTCmanager(rtm.nshost)
     while ms == None :
         time.sleep(1);
@@ -56,12 +57,13 @@ def rtc_init () :
     if co == None:
         rospy.logerr("Could not found CollisionDetector, exiting...")
         exit(0)
-    co_svc = narrow(co.service("service0"), "CollisionDetectorService")
+
+    co_svc = rtm.narrow(co.service("service0"), "CollisionDetectorService")
 
     if modelfile:
-        #import CosNaming
+        import CosNaming
         obj = rtm.rootnc.resolve([CosNaming.NameComponent('ModelLoader', '')])
-        mdlldr = obj._narrow(ModelLoader_idl._0_OpenHRP__POA.ModelLoader)
+        mdlldr = obj._narrow(OpenHRP.ModelLoader_idl._0_OpenHRP__POA.ModelLoader)
         rospy.loginfo("  bodyinfo URL = file://"+modelfile)
         body_info = mdlldr.getBodyInfo("file://"+modelfile)
         root_link_name = body_info._get_links()[0].segments[0].name
@@ -83,6 +85,9 @@ def collision_state() :
     now = rospy.Time.now()
     diagnostic.header.stamp = now
 
+    if not co.isActive():
+        rospy.loginfo("co is not activated")
+        return
     collision_status = co_svc.getCollisionStatus()
 
     if (now - last_collision_status > rospy.Duration(5.0)):
@@ -185,7 +190,7 @@ if __name__ == '__main__':
         while not rospy.is_shutdown():
             try :
                 collision_state()
-            except (CORBA.OBJECT_NOT_EXIST, omniORB.CORBA.TRANSIENT, omniORB.CORBA.BAD_PARAM, omniORB.CORBA.COMM_FAILURE), e :
+            except (omniORB.CORBA.OBJECT_NOT_EXIST, omniORB.CORBA.TRANSIENT, omniORB.CORBA.BAD_PARAM, omniORB.CORBA.COMM_FAILURE), e :
                 rospy.logerr("[collision_state.py] catch exception, restart rtc_init.\nMake sure collision_pair is set in .conf file. See https://github.com/start-jsk/rtmros_common/issues/247\nOriginal exception: {}".format(e))
                 time.sleep(2)
                 rtc_init()
