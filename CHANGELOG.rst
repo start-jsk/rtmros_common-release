@@ -2,6 +2,9 @@
 Changelog for package rtmbuild
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.2.9 (2015-04-11)
+------------------
+
 1.2.8 (2015-03-09)
 ------------------
 * fix for when hrp_idldir is null, hope this solves indigo ros buildfirm problem
