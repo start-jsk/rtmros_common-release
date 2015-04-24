@@ -2,6 +2,9 @@
 Changelog for package openrtm_ros_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.2.10 (2015-04-24)
+-------------------
+
 1.2.9 (2015-04-11)
 ------------------
 * [openrtm_ros_bridge/samples/myservice_example.launch] use MyService{Provider,Consumer}Comp of  openrtm_tools
