@@ -2,6 +2,9 @@
 Changelog for package openrtm_tools
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.2.10 (2015-04-24)
+-------------------
+
 1.2.9 (2015-04-11)
 ------------------
 * [openrtm_tools/scripts/rtshell-setup.sh] modify rtmlaunch alias
