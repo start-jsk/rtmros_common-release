@@ -2,6 +2,26 @@
 Changelog for package hrpsys_ros_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.2.10 (2015-04-24)
+-------------------
+* add rewrited version of compile_robot_model.cmake
+
+  * [compile_robot_model.cmake] generate controller_config even if yaml is not found
+  * [compile_robot_model.cmake] use add_custom_target/command for eusif and launch, set PROJECT_PKG_NAME
+  * [compile_robot_model.cmake] rewrite everything from scratch
+
+* euslisp
+
+  * [rtm-ros-robot-interface.l] Add method to align footsteps    with roll or pitch angle
+  * [datalogger-log-parser.l] change max-line count method
+  * [rtm-ros-robot-interface.l] Add sync-controller method, which preserve limb-controller angle before remove-joint-group is called.
+  * [rtm-ros-robot-interface.l] Enable to set gravitational acceleration for calculating st parameter
+
+* [HrpsysSeqStateROSBridgeImpl.{cpp,h}] display more debug info for diagnostics
+* [cmake/compile_robot_model.cmake] Revert "compile_robot contains output files, not targets"
+* [hrpsys_ros_bridge/package.xml] Limits dependent pkg version to avoid critical error in downstream (tork-a/rtmros_nextage/#160)
+* Contributors: Eisoku Kuroiwa, Isaac IY Saito, Kei Okada, Shunichi Nozawa, Iori Kumagai
+
 1.2.9 (2015-04-11)
 ------------------
 * [package.xml] remove pr2_controllers, add pr2_controller_msgs, pr2_msgs, control_msgs package.xml
@@ -11,8 +31,11 @@ Changelog for package hrpsys_ros_bridge
   * [collision_state.py] fix minor bug of collision_state.py CORBA.OBJECT_NOT_EXIST -> omniORB.CORBA.OBJECT_NOT_EXIST
   * [collision_state.py] check isActive() to avoid raise error during servo on phase
 
-* [hrpsys_tools/hrpsys.launch] support DEBUG_HRPSYS argument to run
-  rtcd with gdb
+* [hrpsys_ros_bridge/catkin.cmake]
+
+  * move rtmlaunch/rtmtest from hrpsys_ros_bridge to openrtm_tools, add envhook for catkin users
+
+* [hrpsys_tools/hrpsys.launch] support DEBUG_HRPSYS argument to run rtcd with gdb
 
 * [hrpsys_ros_bridge/cmake/compile_robot_model.cmake]
 
@@ -33,8 +56,6 @@ Changelog for package hrpsys_ros_bridge
   * Fix order of ee setting
   * Pass arguments for joint-properties to ProjectGenerator
 
-* [hrpsys_ros_bridge/catkin.cmake] we do not have rtmlaunch/rtmtest under hrpsys_ros_bridge
-* move rtmlaunch/rtmtest from hrpsys_ros_bridge to openrtm_tools, add envhook for catkin users
 * Contributors: JAXON, Kei Okada, Ryohei Ueda, Shunichi Nozawa
 
 1.2.8 (2015-03-09)
