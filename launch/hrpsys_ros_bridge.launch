@@ -8,7 +8,7 @@
   <arg name="DEBUG_HRPSYS" default="false" />
 
   <arg name="USE_DIAGNOSTICS" default="true" />
-
+  <arg name="USE_ROBOT_POSE_EKF" default="true" />
   <!-- Set these values false when using HIRO -->
   <arg name="USE_COMMON" default="true" />
   <arg name="USE_ROBOTHARDWARE" default="false" />
@@ -29,9 +29,10 @@
   <!-- BEGIN:openrtm setting -->
   <arg name="nameserver" default="localhost" />
   <arg name="corbaport" default="15005" />
+  <arg name="periodic_rate" default="2000" />
   <env name="RTCTREE_NAMESERVERS" value="$(arg nameserver):$(arg corbaport)" />
   <arg name="omniorb_args" default="-ORBInitRef NameService=corbaloc:iiop:$(arg nameserver):$(arg corbaport)/NameService" />
-  <arg name="openrtm_args" default='-o "corba.nameservers:$(arg nameserver):$(arg corbaport)" -o "naming.formats:%n.rtc" -o "exec_cxt.periodic.type:PeriodicExecutionContext" -o "exec_cxt.periodic.rate:2000" -o "logger.file_name:/tmp/rtc%p.log"' />
+  <arg name="openrtm_args" default='-o "corba.nameservers:$(arg nameserver):$(arg corbaport)" -o "naming.formats:%n.rtc" -o "exec_cxt.periodic.type:PeriodicExecutionContext" -o "exec_cxt.periodic.rate:$(arg periodic_rate)" -o "logger.file_name:/tmp/rtc%p.log"' />
   <!-- END:openrtm setting -->
   <arg name="OUTPUT" default="screen"/>
   <env name="LANG" value="C" />
@@ -231,7 +232,8 @@
 
   <!-- END:openrtm connection -->
 
-  <include file="$(find hrpsys_ros_bridge)/launch/robot_pose_ekf.launch" >
+  <include file="$(find hrpsys_ros_bridge)/launch/robot_pose_ekf.launch" 
+           if="$(arg USE_ROBOT_POSE_EKF)">
     <arg name="base_link" value="$(arg BASE_LINK)"/>
   </include>
 </launch>
