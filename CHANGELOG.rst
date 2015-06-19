@@ -2,6 +2,11 @@
 Changelog for package rtmbuild
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.2.13 (2015-06-11)
+-------------------
+* [script/idl2srv] advertise service after rtc is activated
+* Contributors: Kei Okada
+
 1.2.12 (2015-04-27)
 -------------------
 
