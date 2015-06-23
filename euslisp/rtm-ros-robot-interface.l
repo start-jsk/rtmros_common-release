@@ -724,31 +724,43 @@
      (error ";; no such abc footstep param ~A~%" param-name))
    )
   (:set-foot-steps-no-wait
-   (fs)
+   (foot-step-list)
+   "Set foot step by default parameters and do not wait for step finish.
+    foot-step-list is list of footsteps."
    (send self :autobalancerservice_setfootsteps
          :fs
          (mapcar #'(lambda (f)
                      (send self :eus-footstep->abc-footstep f))
-                 fs)))
+                 foot-step-list)))
   (:set-foot-steps
-   (fs)
-   (send self :set-foot-steps-no-wait fs)
+   (foot-step-list)
+   "Set foot step by default parameters and wait for step finish.
+    foot-step-list is list of footsteps."
+   (send self :set-foot-steps-no-wait foot-step-list)
    (send self :wait-foot-steps))
   (:set-foot-steps-with-param-no-wait
-   (fs sh ta ha)
+   (foot-step-list step-height-list step-time-list toe-angle-list heel-angle-list)
+   "Set foot step with step parameter and do not wait for step finish.
+    foot-step-list is list of footsteps.
+    step-height-list is list of step height.
+    step-time-list is list of step time.
+    toe-angle-list is list of toe angle.
+    heel-angle-list is list of heel angle."
    (send self :autobalancerservice_setfootstepswithparam
          :fs
          (mapcar #'(lambda (f)
                      (send self :eus-footstep->abc-footstep f))
-                 fs)
+                 foot-step-list)
          :sps
-         (mapcar #'(lambda (h tt hh)
-                     (instance hrpsys_ros_bridge::openhrp_autobalancerservice_stepparam :init :step_height (* h 1e-3) :toe_angle tt :heel_angle hh))
-                 sh ta ha)
+         (mapcar #'(lambda (sh st ta ha)
+                     (instance hrpsys_ros_bridge::openhrp_autobalancerservice_stepparam :init :step_height (* sh 1e-3) :step_time st :toe_angle ta :heel_angle ha))
+                 step-height-list step-time-list toe-angle-list heel-angle-list)
          ))
   (:set-foot-steps-with-param
-   (fs sh ta ha)
-   (send self :set-foot-steps-with-param-no-wait fs sh ta ha)
+   (foot-step-list step-height-list step-time-list toe-angle-list heel-angle-list)
+   "Set foot step with step parameter and wait for step finish.
+    For arguments, please see :set-foot-steps-with-param-no-wait documentation."
+   (send self :set-foot-steps-with-param-no-wait foot-step-list step-height-list step-time-list toe-angle-list heel-angle-list)
    (send self :wait-foot-steps))
   (:set-foot-steps-roll-pitch
    (angle &key (axis :x))
@@ -794,12 +806,42 @@
                                       :translate off)
                         :name :lleg))
      ))
+  (:get-remaining-foot-step-sequence
+   ()
+   "Get remaining foot steps from GaitGenerator.
+   Return is (list current-support-foot-coords remaining-swing-dst-coords-0 ... )."
+   (mapcar #'(lambda (fs)
+               (send self :abc-footstep->eus-footstep fs))
+           (send (send self :autobalancerservice_getRemainingFootstepSequence) :o_footstep))
+   )
+  (:draw-remaining-foot-step-sequence
+   (vwer
+    &key (flush) (rleg-color #f(1 0 0)) (lleg-color #f(0 1 0))
+         (change-support-leg-color t) (support-leg-color #f(1 1 1)))
+   "Draw remaining foot steps."
+   (let ((fs (send self :get-remaining-foot-step-sequence)))
+     (mapcar #'(lambda (f)
+                 (let* ((leg (send f :name))
+                        (fc (instance face :init
+                                    :vertices
+                                    (mapcar #'(lambda (x) (send f :transform-vector (send robot leg :end-coords :inverse-transform-vector x))) (butlast (send (send robot :support-polygon leg) :vertices))))))
+                 (if (and change-support-leg-color (= (position f fs) 0))
+                     (send fc :draw-on :color support-leg-color)
+                   (send fc :draw-on :color (case (send f :name) (:rleg rleg-color) (:lleg lleg-color))))))
+             fs)
+     (if flush (send vwer :viewsurface :flush))
+     ))
   (:go-velocity
    (vx vy vth)
    (send self :autobalancerservice_goVelocity :vx vx :vy vy :vth vth))
   (:go-stop
    ()
+   "Stop stepping."
    (send self :autobalancerservice_goStop))
+  (:emergency-walking-stop
+   ()
+   "Stop stepping immediately."
+   (send self :autobalancerservice_emergencyStop))
   (:calc-go-velocity-param-from-velocity-center-offset
    (ang velocity-center-offset)
    "Calculate go-velocity velocities from rotation center and rotation angle.
@@ -817,6 +859,7 @@
         ))))
   (:wait-foot-steps
    ()
+   "Wait for whole footsteps are executed."
    (send self :autobalancerservice_waitFootSteps))
   ;; wrap :set-gait-generator-param to use symbol for default-orbit-type
   (:set-gait-generator-param
@@ -902,7 +945,8 @@
   (:abc-footstep->eus-footstep
    (f)
    (make-coords :pos (scale 1e3 (send f :pos))
-                :rot (quaternion2matrix (send f :rot)))
+                :rot (quaternion2matrix (send f :rot))
+                :name (read-from-string (format nil ":~A" (send f :leg))))
    )
   (:eus-footstep->abc-footstep
    (f)
