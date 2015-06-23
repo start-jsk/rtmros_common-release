@@ -2,6 +2,11 @@
 Changelog for package rtmbuild
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.2.14 (2015-06-23)
+-------------------
+* [rtmbuild/scripts/idl2srv.py] print when service is called and returned
+* Contributors: Kei Okada
+
 1.2.13 (2015-06-11)
 -------------------
 * [script/idl2srv] advertise service after rtc is activated
