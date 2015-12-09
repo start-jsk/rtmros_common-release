@@ -109,6 +109,8 @@ macro(compile_openhrp_model wrlfile)
   #message(STATUS "Found ${_collada_to_urdf_exe}")
   #message(STATUS "Found ${_controller_config_converter}")
 
+  set(${_sname}_${PROJECT_NAME}_compile_all_target)
+
   # output collada (wrl -> collada )
   if(EXISTS ${_wrlfile})
     add_custom_command(OUTPUT ${_daefile}
@@ -128,7 +130,6 @@ macro(compile_openhrp_model wrlfile)
   list(APPEND ${_sname}_${PROJECT_NAME}_compile_all_target ${_sname}_${PROJECT_NAME}_compile_urdf)
 
   # output euslisp files (dae, yaml -> euslisp)
-  set(${_sname}_${PROJECT_NAME}_compile_all_target)
   if(EXISTS ${_collada2eus_exe})
     add_custom_command(OUTPUT ${_lispfile}
       COMMAND ${_collada2eus_option} ${_collada2eus_exe} ${_daefile} ${_yamlfile} ${_lispfile}
@@ -136,7 +137,6 @@ macro(compile_openhrp_model wrlfile)
     add_custom_target(${_sname}_${PROJECT_NAME}_compile_lisp DEPENDS ${_lispfile})
     list(APPEND ${_sname}_${PROJECT_NAME}_compile_all_target ${_sname}_${PROJECT_NAME}_compile_lisp)
   endif()
-
 
   if(_controller_config)
     # output controller config (yaml -> config) if yaml is not found write dummy files
@@ -198,12 +198,13 @@ macro (generate_default_launch_eusinterface_files wrlfile project_pkg_name)
   set(${_sname}_generated_launch_euslisp_files)
   #   generate hrpsys_config.py to use unstable RTCs
   set(ROSBRIDGE_ARGS "    <arg name=\"BASE_LINK\" default=\"WAIST_LINK0\" />\n")
+  set(USE_UNSTABLE_RTC "false")
+  set(STARTUP_ARGS "    <arg name=\"HRPSYS_PY_PKG\" default=\"${PROJECT_PKG_NAME}\" if=\"$(arg USE_UNSTABLE_RTC)\"/>\n    <arg name=\"HRPSYS_PY_NAME\" default=\"${_sname}_hrpsys_config.py\" if=\"$(arg USE_UNSTABLE_RTC)\"/>")
   if ("${ARGV3}" STREQUAL "--use-unstable-hrpsys-config")
-    set(ROSBRIDGE_ARGS "    <arg name=\"USE_WALKING\" default=\"true\" />\n    <arg name=\"USE_IMPEDANCECONTROLLER\" default=\"true\" />${ROSBRIDGE_ARGS}")
+    set(USE_UNSTABLE_RTC "true")
     set(STARTUP_ARGS "    <arg name=\"HRPSYS_PY_ARGS\" default=\"--use-unstable-rtc\" />")
   elseif ("${ARGV3}" STREQUAL "--use-robot-hrpsys-config")
-    set(ROSBRIDGE_ARGS "    <arg name=\"USE_WALKING\" default=\"true\" />\n    <arg name=\"USE_IMPEDANCECONTROLLER\" default=\"true\" />${ROSBRIDGE_ARGS}")
-    set(STARTUP_ARGS "    <arg name=\"HRPSYS_PY_PKG\" default=\"${PROJECT_PKG_NAME}\" />\n    <arg name=\"HRPSYS_PY_NAME\" default=\"${_sname}_hrpsys_config.py\" />")
+    set(USE_UNSTABLE_RTC "true")
   endif()
   #  generate startup.launch
   configure_file(${hrpsys_ros_bridge_PACKAGE_PATH}/scripts/default_robot_startup.launch.in ${PROJECT_SOURCE_DIR}/launch/${_sname}_startup.launch)
@@ -316,9 +317,14 @@ endmacro()
 
 # get path to collada_to_urdf
 macro(get_collada_to_urdf _collada_to_urdf_exe)
+  find_package(collada_urdf_jsk_patch QUIET)
   find_package(collada_urdf REQUIRED)
-  set(${_collada_to_urdf_exe} ${collada_urdf_PREFIX}/lib/collada_urdf/collada_to_urdf)
-  if(NOT EXISTS ${${_collada_to_urdf_exe}})
+  if (collada_urdf_jsk_patch_FOUND)
+    set(${_collada_to_urdf_exe} ${collada_urdf_jsk_patch_PREFIX}/lib/collada_urdf_jsk_patch/collada_to_urdf)
+  elseif (collada_urdf_FOUND)
+    set(${_collada_to_urdf_exe} ${collada_urdf_PREFIX}/lib/collada_urdf/collada_to_urdf)
+  endif (collada_urdf_jsk_patch_FOUND)
+  if(NOT EXISTS "${${_collada_to_urdf_exe}}")
     message(FATAL_ERROR "could not find ${${_collada_to_urdf_exe}}")
   endif()
 endmacro(get_collada_to_urdf _collada_to_urdf_exe)
