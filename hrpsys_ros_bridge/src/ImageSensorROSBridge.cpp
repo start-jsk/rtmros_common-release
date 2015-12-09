@@ -30,6 +30,7 @@ ImageSensorROSBridge::ImageSensorROSBridge(RTC::Manager* manager)
     // <rtc-template block="initializer">
   : RTC::DataFlowComponentBase(manager),
     m_imageIn("image", m_image),
+    m_timageIn("timedImage", m_timage),
     // </rtc-template>
     it(node)
 {
@@ -46,6 +47,7 @@ RTC::ReturnCode_t ImageSensorROSBridge::onInitialize()
   // <rtc-template block="registration">
   // Set InPort buffers
   addInPort("image", m_imageIn);
+  addInPort("timedImage", m_timageIn);
 
   // Set OutPort buffer
 
@@ -68,8 +70,50 @@ RTC::ReturnCode_t ImageSensorROSBridge::onInitialize()
   ROS_INFO_STREAM("[ImageSensorROSBridge] @Initilize name : " << getInstanceName());
 
   pair_id = 0;
+  // camera_param K
+  K[0] = 700; K[1] =   0; K[2] = 160;
+  K[3] =   0; K[4] = 700; K[5] = 120;
+  K[6] =   0; K[7] =   0; K[8] = 1;
+  // camera_param P
+  P[0] = 700; P[1] =   0; P[2] = 160; P[3] = 0;
+  P[4] =   0; P[5] = 700; P[6] = 120; P[7] = 0;
+  P[8] =   0; P[9] =   0; P[10] = 1;  P[11] = 0;
+  overwrite_P = overwrite_K = false;
   ros::param::param<std::string>("~frame_id", frame, "camera");
-
+  if(ros::param::has("~camera_param_K")) {
+    XmlRpc::XmlRpcValue param_list;
+    if (ros::param::get("~camera_param_K", param_list)) {
+      overwrite_K = true;
+      if(param_list.getType() == XmlRpc::XmlRpcValue::TypeArray) {
+        for (int i = 0; i < param_list.size(); i++) {
+          double k;
+          if(param_list[i].getType() == XmlRpc::XmlRpcValue::TypeInt) {
+            k = (int)param_list[i];
+          } else if(param_list[i].getType() == XmlRpc::XmlRpcValue::TypeDouble) {
+            k = (double)param_list[i];
+          }
+          if(i < 9) K[i] =  k;
+        }
+      }
+    }
+  }
+  if(ros::param::has("~camera_param_P")) {
+    XmlRpc::XmlRpcValue param_list;
+    if (ros::param::get("~camera_param_P", param_list)) {
+      overwrite_P = true;
+      if(param_list.getType() == XmlRpc::XmlRpcValue::TypeArray) {
+        for (int i = 0; i < param_list.size(); i++){
+          double p;
+          if(param_list[i].getType() == XmlRpc::XmlRpcValue::TypeInt) {
+            p = (int)param_list[i];
+          } else if(param_list[i].getType() == XmlRpc::XmlRpcValue::TypeDouble) {
+            p = (double)param_list[i];
+          }
+          if(i < 12) P[i] = p;
+        }
+      }
+    }
+  }
   tm.tick();
   return RTC::RTC_OK;
 }
@@ -162,10 +206,9 @@ RTC::ReturnCode_t ImageSensorROSBridge::onExecute(RTC::UniqueId ec_id)
     info->width  = image->width;
     info->height = image->height;
     info->distortion_model = "plumb_bob";
-    boost::array<double, 9> K = {700.0, 0.0, 160.0, 0.0, 700.0, 120.0, 0.0, 0.0, 1.0}; // TODO fieldOfView       0.785398
     info->K = K;
-    boost::array<double, 12> P = {700, 0, 160, 0, 0, 700, 120, 0, 0, 0, 1, 0};
     info->P = P;
+    info->R[0] = info->R[4] = info->R[8] = 1;
     info->header.stamp = capture_time;
     info->header.frame_id = frame;
     info_pub.publish(info);
@@ -177,9 +220,93 @@ RTC::ReturnCode_t ImageSensorROSBridge::onExecute(RTC::UniqueId ec_id)
     if ( tm.interval() > 1 ) {
       ROS_INFO_STREAM("[" << getInstanceName() << "] @onExecutece " << ec_id << " is working at " << count << "[Hz]");
       tm.tick();
+      count = 0;
     }
     count ++;
-  } else {  // m_image
+  } else if (m_timageIn.isNew()) { //
+    ROS_DEBUG_STREAM("[" << getInstanceName() << "] @onExecute ec_id : " << ec_id << ", timedImage:" << m_timageIn.isNew ());
+    //
+    sensor_msgs::ImagePtr image(new sensor_msgs::Image);
+    sensor_msgs::CameraInfoPtr info(new sensor_msgs::CameraInfo);
+
+    m_timageIn.read();
+
+    image->width  = m_timage.data.image.width;
+    image->height = m_timage.data.image.height;
+
+    switch(m_timage.data.image.format) {
+    case Img::CF_GRAY:
+      image->encoding = sensor_msgs::image_encodings::MONO8;
+      image->step = 1 * m_timage.data.image.width;
+      break;
+    case Img::CF_RGB:
+      image->encoding = sensor_msgs::image_encodings::RGB8;
+      image->step = 3 * m_timage.data.image.width;
+      break;
+    }
+
+    image->header.stamp = ros::Time(m_timage.tm.sec, m_timage.tm.nsec);
+    //std::cerr << m_timage.tm.sec << " " << m_timage.tm.nsec << " / ";
+    //std::cerr << m_timage.data.captured_time.sec << " " << m_timage.data.captured_time.nsec << std::endl;
+    image->header.seq = pair_id;
+    image->header.frame_id = frame;
+
+    image->data.resize(m_timage.data.image.raw_data.length());
+    std::copy(m_timage.data.image.raw_data.get_buffer(),
+              m_timage.data.image.raw_data.get_buffer() + m_timage.data.image.raw_data.length(), 
+              image->data.begin());
+
+    pub.publish(image);
+
+    info->width  = image->width;
+    info->height = image->height;
+    info->distortion_model = "plumb_bob";
+    if (m_timage.data.intrinsic.distortion_coefficient.length() > 0) {
+      info->D.resize(m_timage.data.intrinsic.distortion_coefficient.length());
+      for(int n = 0; n < m_timage.data.intrinsic.distortion_coefficient.length(); n++) {
+        info->D[n] = m_timage.data.intrinsic.distortion_coefficient[n];
+      }
+    }
+    if (overwrite_K) {
+      info->K = K;
+    } else {
+      info->K[0] = m_timage.data.intrinsic.matrix_element[0];
+      info->K[1] = m_timage.data.intrinsic.matrix_element[1];
+      info->K[2] = m_timage.data.intrinsic.matrix_element[2];
+      info->K[3] = m_timage.data.intrinsic.matrix_element[1];
+      info->K[4] = m_timage.data.intrinsic.matrix_element[3];
+      info->K[5] = m_timage.data.intrinsic.matrix_element[4];
+      info->K[6] = info->K[7] = 0.0; info->K[8] = 1.0;
+    }
+    if (overwrite_P) {
+      info->P = P;
+    } else {
+      // TODO using parameters
+      // P = K * m_timage.data.extrinsic ???
+      info->P[0] = m_timage.data.intrinsic.matrix_element[0];
+      info->P[1] = m_timage.data.intrinsic.matrix_element[1];
+      info->P[2] = m_timage.data.intrinsic.matrix_element[2];
+      info->P[4] = m_timage.data.intrinsic.matrix_element[1];
+      info->P[5] = m_timage.data.intrinsic.matrix_element[3];
+      info->P[6] = m_timage.data.intrinsic.matrix_element[4];
+      info->P[3] = info->P[7] = info->P[8] = info->P[9] = info->P[11] = 0.0;
+      info->P[10] = 1.0;
+    }
+    info->R[0] = info->R[4] = info->R[8] = 1;
+    info->header = image->header;
+    info_pub.publish(info);
+
+    ++pair_id;
+
+    static int count = 0;
+    tm.tack();
+    if ( tm.interval() > 1 ) {
+      ROS_INFO_STREAM("[" << getInstanceName() << "] @onExecutece " << ec_id << " is working at " << count << "[Hz]");
+      tm.tick();
+      count = 0;
+    }
+    count ++;
+  }else {  // m_image
     double interval = 5;
     tm.tack();
     if ( tm.interval() > interval ) {
