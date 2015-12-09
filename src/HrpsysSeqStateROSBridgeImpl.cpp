@@ -33,10 +33,17 @@ HrpsysSeqStateROSBridgeImpl::HrpsysSeqStateROSBridgeImpl(RTC::Manager* manager)
     m_mcangleIn("mcangle", m_mcangle),
     m_baseTformIn("baseTform", m_baseTform),
     m_baseRpyIn("baseRpy", m_baseRpy),
+    m_rsvelIn("rsvel", m_rsvel),
     m_rstorqueIn("rstorque", m_rstorque),
     m_servoStateIn("servoState", m_servoState),
     m_rszmpIn("rszmp", m_rszmp),
+    m_rsrefCPIn("rsrefCapturePoint", m_rsrefCP),
+    m_rsactCPIn("rsactCapturePoint", m_rsactCP),
     m_rsCOPInfoIn("rsCOPInfo", m_rsCOPInfo),
+    m_emergencyModeIn("emergencyMode", m_emergencyMode),
+    m_refContactStatesIn("refContactStates", m_refContactStates),
+    m_actContactStatesIn("actContactStates", m_actContactStates),
+    m_controlSwingSupportTimeIn("controlSwingSupportTime", m_controlSwingSupportTime),
     m_mctorqueOut("mctorque", m_mctorque),
     m_SequencePlayerServicePort("SequencePlayerService")
 
@@ -58,10 +65,17 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridgeImpl::onInitialize()
   addInPort("mcangle", m_mcangleIn);
   addInPort("baseTform", m_baseTformIn);
   addInPort("baseRpy", m_baseRpyIn);
+  addInPort("rsvel", m_rsvelIn);
   addInPort("rstorque", m_rstorqueIn);
   addInPort("rszmp", m_rszmpIn);
+  addInPort("rsrefCapturePoint", m_rsrefCPIn);
+  addInPort("rsactCapturePoint", m_rsactCPIn);
   addInPort("servoState", m_servoStateIn);
   addInPort("rsCOPInfo", m_rsCOPInfoIn);
+  addInPort("emergencyMode", m_emergencyModeIn);
+  addInPort("refContactStates", m_refContactStatesIn);
+  addInPort("actContactStates", m_actContactStatesIn);
+  addInPort("controlSwingSupportTime", m_controlSwingSupportTimeIn);
 
   // Set OutPort buffer
   addOutPort("mctorque", m_mctorqueOut);
@@ -154,6 +168,15 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridgeImpl::onInitialize()
         // Rotate sensor->localR 180[deg] because OpenHRP3 camera -Z axis equals to ROS camera Z axis
         // http://www.openrtp.jp/openhrp3/jp/create_model.html
         rpy = hrp::rpyFromRot(sensor->localR * hrp::rodrigues(hrp::Vector3(1,0,0), M_PI));
+      else if ( hrp::Sensor::RANGE == sensor->type )
+        {
+          // OpenHRP3 range sensor, front direction is -Z axis, and detected plane is XZ plane
+          // ROS LaserScan, front direction is X axis, and detected plane is XY plane
+          // http://www.openrtp.jp/openhrp3/jp/create_model.html
+          hrp::Matrix33 m;
+          m << 0, -1, 0, 0, 0, 1, -1, 0, 0;
+          rpy = hrp::rpyFromRot(sensor->localR * m);
+        }
       else
         rpy = hrp::rpyFromRot(sensor->localR);
       si.transform.setRotation( tf::createQuaternionFromRPY(rpy(0), rpy(1), rpy(2)) );
