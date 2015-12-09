@@ -14,6 +14,8 @@
 #include <rtm/DataInPort.h>
 #include <rtm/DataOutPort.h>
 
+#include <hrpsys/idl/Img.hh>
+
 // Service implementation headers
 // <rtc-template block="service_impl_h">
 
@@ -101,6 +103,9 @@ class ImageSensorROSBridge  : public RTC::DataFlowComponentBase
   TimedLongSeq m_image;
   InPort<TimedLongSeq> m_imageIn;
 
+  Img::TimedCameraImage m_timage;
+  InPort<Img::TimedCameraImage> m_timageIn;
+
   // </rtc-template>
 
   // DataOutPort declaration
@@ -133,6 +138,11 @@ class ImageSensorROSBridge  : public RTC::DataFlowComponentBase
   unsigned int pair_id;
   ros::Time capture_time;
   std::string frame;
+
+  boost::array<double, 9> K;
+  boost::array<double, 12> P;
+  bool overwrite_K;
+  bool overwrite_P;
 
   coil::TimeMeasure tm;
 };

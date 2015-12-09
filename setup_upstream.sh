@@ -3,6 +3,7 @@
 function usage {
     echo >&2 "usage: $0"
     echo >&2 "          [-w|--workspace] workspace to set openrtm/openhrp/hrpsys repository,"
+    echo >&2 "          [-p|--package] download only selected package,"
     exit 0
 }
 
@@ -13,7 +14,7 @@ function error {
 trap error ERR
 
 # command line parse
-OPT=`getopt -o hw: -l help,workspace: -- $*`
+OPT=`getopt -o hw:p: -l help,workspace:,package: -- $*`
 if [ $? != 0 ]; then
     usage
 fi
@@ -23,6 +24,7 @@ while [ -n "$1" ] ; do
     case $1 in
 	-h|--help) usage ;;
 	-w|--workspace) WORKSPACE=$2; shift 2;;
+	-p|--package) PACKAGE=$2; shift 2;;
 	--) shift; break;;
 	*) echo "Unknown option($1)"; usage;;
     esac
@@ -45,12 +47,15 @@ EOF
     done
 fi
 
-# update HISTORY-{en,ja}.txt, CMakeLists.txt(OPENHRP_VERSION) and ask kanehiro-san for set tag
-cat <<EOF >> /tmp/rosinstall.$$
+if [ "$IS_EUSLISP_TRAVIS_TEST" != "true" ] ; then
+#    wstool remove openhrp3
+    # update HISTORY-{en,ja}.txt, CMakeLists.txt(OPENHRP_VERSION) and ask kanehiro-san for set tag
+    cat <<EOF >> /tmp/rosinstall.$$
 - git:
     uri: http://github.com/fkanehiro/openhrp3
     local-name: openhrp3
 EOF
+fi
 
 # update package.xml, CMakeLists.txt(CMAKE_PACKAGE_VERSION) and ask kanehiro-san for set tag
 cat <<EOF >> /tmp/rosinstall.$$
@@ -61,12 +66,16 @@ EOF
 
 wstool merge /tmp/rosinstall.$$ -t $WORKSPACE/src
 wstool info -t $WORKSPACE/src
-wstool update --abort-changed-uris -t $WORKSPACE/src
+wstool update --abort-changed-uris -t $WORKSPACE/src $PACKAGE
 
-echo "Updaging openhrp3 CMakeLists.txt"
-sed -i 's@option(ENABLE_DOXYGEN "Use Doxygen" ON)@option(ENABLE_DOXYGEN "Use Doxygen" OFF)@' $WORKSPACE/src/openhrp3/CMakeLists.txt
+if [ -e $WORKSPACE/src/openhrp3/CMakeLists.txt ]; then
+    echo "Updaging openhrp3 CMakeLists.txt"
+    sed -i 's@option(ENABLE_DOXYGEN "Use Doxygen" ON)@option(ENABLE_DOXYGEN "Use Doxygen" OFF)@' $WORKSPACE/src/openhrp3/CMakeLists.txt
+fi
 
-echo "Updaging hrpsys CMakeLists.txt"
-sed -i 's@option(ENABLE_DOXYGEN "Use Doxygen" ON)@option(ENABLE_DOXYGEN "Use Doxygen" OFF)@' $WORKSPACE/src/hrpsys/CMakeLists.txt
+if [ -e $WORKSPACE/src/hrpsys/CMakeLists.txt ]; then
+    echo "Updaging hrpsys CMakeLists.txt"
+    sed -i 's@option(ENABLE_DOXYGEN "Use Doxygen" ON)@option(ENABLE_DOXYGEN "Use Doxygen" OFF)@' $WORKSPACE/src/hrpsys/CMakeLists.txt
+fi
 
 echo "*** Done"
