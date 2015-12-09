@@ -2,6 +2,13 @@
 Changelog for package rtmbuild
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.3.0 (2015-12-09)
+------------------
+* deb release only targeting to indigo
+
+* [rtmbuild/cmake/rtmbuild.cmake] add a "-Wbuse_quotes" option to omniidl
+* Contributors: Eisoku Kuroiwa
+
 1.2.14 (2015-06-23)
 -------------------
 * [rtmbuild/scripts/idl2srv.py] print when service is called and returned
