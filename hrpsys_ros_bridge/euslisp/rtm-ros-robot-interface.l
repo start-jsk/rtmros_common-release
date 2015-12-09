@@ -29,6 +29,16 @@
                      #'send self :rtmros-zmp-callback :groupname groupname)
      (ros::subscribe "/imu" sensor_msgs::Imu
                      #'send self :rtmros-imu-callback :groupname groupname)
+     (ros::subscribe "/emergency_mode" std_msgs::Int32
+                     #'send self :rtmros-emergency-mode-callback :groupname groupname)
+     (mapcar #'(lambda (x)
+                 (ros::subscribe (format nil "/~A_capture_point" x) geometry_msgs::PointStamped
+                                 #'send self :rtmros-capture-point-callback (read-from-string (format nil ":~A-capture-point" x)) :groupname groupname))
+             '(ref act))
+     (mapcar #'(lambda (x)
+                 (ros::subscribe (format nil "/~A_contact_states" x) hrpsys_ros_bridge::ContactStatesStamped
+                                 #'send self :rtmros-contact-states-callback (read-from-string (format nil ":~A-contact-states" x)) :groupname groupname))
+             '(ref act))
      ))
   (:rtmros-motor-states-callback
    (msg)
@@ -53,6 +63,19 @@
                          (send (send wrc :torque) :x)
                          (send (send wrc :torque) :y)
                          (send (send wrc :torque) :z)))))
+  (:rtmros-emergency-mode-callback
+   (msg)
+   (let ((m (send msg :data)))
+     (send self :set-robot-state1 :emergency-mode m))
+   )
+  (:rtmros-capture-point-callback
+   (ref-act msg)
+   (let ((p (send msg :point)))
+     (send self :set-robot-state1 ref-act (float-vector (send p :x) (send p :y) (send p :z)))))
+  (:rtmros-contact-states-callback
+   (ref-act msg)
+   (let ((ss (send-all (send msg :states) :state :state)))
+     (send self :set-robot-state1 ref-act ss)))
   (:tmp-force-moment-vector-for-limb
    (f/m fsensor-name &optional (topic-name-prefix nil)) ;; topic-name-prefix is "off" or "reference"
    (let ((key-name (if topic-name-prefix
@@ -130,6 +153,30 @@
      (case wrt
        (:local zmp)
        (:world (send (car (send robot :links)) :transform-vector zmp)))))
+  (:ref-capture-point-vector
+   (&optional (wrt :local))
+   "Returns ref-capture-point vector [mm].
+    If wrt is :local, returns ref-capture-point in the base-link frame. If wrt is :world, returns ref-capture-point in the world frame."
+   (let ((cp (scale 1e3 (cdr (assoc :ref-capture-point robot-state))))) ;; [m] -> [mm]
+     (case wrt
+       (:local cp)
+       (:world (send (car (send robot :links)) :transform-vector cp)))))
+  (:act-capture-point-vector
+   (&optional (wrt :local))
+   "Returns act-capture-point vector [mm].
+    If wrt is :local, returns act-capture-point in the base-link frame. If wrt is :world, returns act-capture-point in the world frame."
+   (let ((cp (scale 1e3 (cdr (assoc :act-capture-point robot-state))))) ;; [m] -> [mm]
+     (case wrt
+       (:local cp)
+       (:world (send (car (send robot :links)) :transform-vector cp)))))
+  (:ref-contact-states
+   ()
+   "Returns contact states from AutoBalancer."
+   (cdr (assoc :ref-contact-states robot-state)))
+  (:act-contact-states
+   ()
+   "Returns contact states from Stabilizer."
+   (cdr (assoc :act-contact-states robot-state)))
   (:temperature-vector
    ()
    "Returns temperature vector."
@@ -198,10 +245,10 @@
            nil)
        `(defmethod rtm-ros-robot-interface
           (,new-method-name
-           ,(cadr init-method)
+           ,(append (cadr init-method) (list (list 'rosbridge-name (format nil "~AROSBridge" rtc-name))))
            (or
            (ros::service-call
-            ,(format nil "/~AROSBridge/~A" rtc-name meth-name)
+            (format nil "/~A/~A" rosbridge-name ,meth-name)
             (instance ,(eval srv-request) :init ,@(mapcan #'(lambda (x) (list (caar x) (cadar x))) (cdadr init-method))))
            (error ";; service call failed (~A)" ,new-method-name)
            )
@@ -569,6 +616,97 @@
     ))
   )
 
+;; ImpedanceController's ObjectTurnaroundDetector
+(def-set-get-param-method 'hrpsys_ros_bridge::OpenHRP_ImpedanceControllerService_objectTurnaroundDetectorParam
+  :set-object-turnaround-detector-param :get-object-turnaround-detector-param
+  :impedancecontrollerservice_setObjectTurnaroundDetectorParam
+  :impedancecontrollerservice_getObjectTurnaroundDetectorParam)
+(defmethod rtm-ros-robot-interface
+  (:start-object-turnaround-detection
+   (&key (ref-diff-wrench) (max-time) (limbs))
+   "Start ObjectTurnaroundDetection mode.
+    ref-diff-wrench is final reference wrench (scalar).
+    max-time is max time [msec].
+    limbs is limb list to be used."
+   (send self :impedancecontrollerservice_startObjectTurnaroundDetection
+         :i_ref_diff_wrench ref-diff-wrench :i_max_time max-time :i_ee_names (mapcar #'string-downcase limbs)))
+  (:check-object-turnaround-detection
+   ()
+   "Check object turnaround detection.
+   If t, detected. Otherwise, not detected."
+   (send self :get-idl-enum-values
+         (send (send self :impedancecontrollerservice_checkObjectTurnaroundDetection) :operation_return)
+         "HRPSYS_ROS_BRIDGE::OPENHRP_IMPEDANCECONTROLLERSERVICE_DETECTORMODE"))
+  (:get-otd-object-forces-moments
+   ()
+   "Get ObjectTurnaroundDetector's curernt forces and moments for used limbs.
+    Return value is (list force-list moment-list)."
+   (labels ((split-vector
+             (vec &optional (dim 3))
+             (let ((vret))
+               (dotimes (i (/ (length vec) dim))
+                 (push (subseq vec (* i 3) (+ (* i 3) 3)) vret))
+               (reverse vret))))
+     (let ((ret (send self :impedancecontrollerservice_getObjectForcesMoments)))
+       (list (split-vector (send (send ret :o_forces) :data)) (split-vector (send (send ret :o_moments) :data)))
+       ))
+   )
+  ;; !!Currently for resultant forces!!
+  (:set-object-turnaround-ref-force
+   (&key (limbs '(:rarm :larm))
+         (axis (float-vector 0 0 -1))
+         (max-time 4000.0)
+         (max-ref-force)
+         (detect-time-offset 2000.0)
+         (set-ref-force-time 2000.0)
+         (set-ref-force-p t))
+   "Set object turnaround reference force.
+    axis is resultant force direction.
+    max-time is max time [msec].
+    detect-time-offset is additional checking time [msec]."
+   (format t ";; Start object turnaround detection~%")
+   (send self :set-object-turnaround-detector-param :axis axis)
+   (send self :set-ref-force
+         (scale (/ max-ref-force (length limbs)) axis)
+         max-time
+         (if (= (length limbs) 1) (car limbs) :arms))
+   (send self :start-object-turnaround-detection
+         :ref-diff-wrench max-ref-force
+         :max-time (* 1e-3 (+ detect-time-offset max-time))
+         :limbs limbs)
+   (let ((detector-mode :mode_detector_idle) (fm-ret))
+     (do-until-key-with-check
+      (not (not (memq detector-mode '(:mode_started :mode_detector_idle))))
+      (setq detector-mode (send self :check-object-turnaround-detection))
+      (format t ";;   Detecting... (detector-mode = ~A, current force moment = ~A)~%" detector-mode (send self :get-otd-object-forces-moments))
+      (unix:usleep (* 1000 500)))
+     (if (eq detector-mode :mode_detected)
+         (progn
+           (setq fm-ret (send self :get-otd-object-forces-moments))
+           (format t ";; Detected (force moment = ~A)~%" fm-ret)
+           (if set-ref-force-p
+               (send self :set-ref-force
+                     (car (car fm-ret))
+                     set-ref-force-time
+                     (if (= (length limbs) 1) (car limbs) :arms))
+             (send self :set-ref-force
+                   (float-vector 0 0 0)
+                   set-ref-force-time
+                   (if (= (length limbs) 1) (car limbs) :arms))))
+       (progn
+         (format t ";; Not detected (~A)~%" detector-mode)
+         (send self :set-ref-force
+               (float-vector 0 0 0)
+               set-ref-force-time
+               (if (= (length limbs) 1) (car limbs) :arms))
+         )
+       )
+     (send self :wait-interpolation-seq)
+     (if (eq detector-mode :mode_detected)
+         (car fm-ret))
+     ))
+  )
+
 ;; RemoveForceSensorLinkOffset
 (def-set-get-param-method 'hrpsys_ros_bridge::OpenHRP_RemoveForceSensorLinkOffsetService_ForceMomentOffsetParam
   :raw-set-forcemoment-offset-param :raw-get-forcemoment-offset-param
@@ -682,10 +820,19 @@
   'hrpsys_ros_bridge::Openhrp_AutoBalancerService_GaitGeneratorParam
   :raw-set-gait-generator-param :get-gait-generator-param
   :autobalancerservice_setgaitgeneratorparam :autobalancerservice_getgaitgeneratorparam)
+(def-set-get-param-method
+  'hrpsys_ros_bridge::Openhrp_AutoBalancerService_AutoBalancerParam
+  :raw-set-auto-balancer-param :get-auto-balancer-param
+  :autobalancerservice_setAutoBalancerparam :autobalancerservice_getAutoBalancerparam)
 
 (defmethod rtm-ros-robot-interface
   (:start-auto-balancer
-   (&key (limbs '(:rleg :lleg)))
+   (&key (limbs (if (not (every #'null (send robot :arms)))
+                    '(:rleg :lleg :rarm :larm)
+                  '(:rleg :lleg))))
+   "startAutoBalancer.
+    If robot with arms, start auto balancer with legs and arms ik by default.
+    Otherwise, start auto balancer with legs ik by default."
    (send self :autobalancerservice_startAutoBalancer
          :limbs (mapcar #'(lambda (x) (format nil "~A" (string-downcase x))) limbs)))
   (:stop-auto-balancer () (send self :autobalancerservice_stopAutoBalancer))
@@ -724,43 +871,67 @@
      (error ";; no such abc footstep param ~A~%" param-name))
    )
   (:set-foot-steps-no-wait
-   (foot-step-list)
+   (foot-step-list &key (overwrite-footstep-index 0))
    "Set foot step by default parameters and do not wait for step finish.
-    foot-step-list is list of footsteps."
+    foot-step-list is list of footstep (only biped) or list of list of footstep.
+    overwrite-footstep-index is index to be overwritten. overwrite_fs_idx is used only in walking."
+   (unless (listp (car foot-step-list))
+     (setq foot-step-list (mapcar #'(lambda (fs) (list fs)) foot-step-list)))
    (send self :autobalancerservice_setfootsteps
-         :fs
-         (mapcar #'(lambda (f)
-                     (send self :eus-footstep->abc-footstep f))
-                 foot-step-list)))
+         :fss
+         (mapcar #'(lambda (fs)
+                     (instance hrpsys_ros_bridge::openhrp_autobalancerservice_footsteps :init
+                               :fs
+                               (mapcar #'(lambda (f)
+                                           (send self :eus-footstep->abc-footstep f))
+                                       fs)))
+                 foot-step-list)
+         :overwrite_fs_idx overwrite-footstep-index))
   (:set-foot-steps
-   (foot-step-list)
+   (foot-step-list &key (overwrite-footstep-index 0))
    "Set foot step by default parameters and wait for step finish.
-    foot-step-list is list of footsteps."
-   (send self :set-foot-steps-no-wait foot-step-list)
+    foot-step-list is list of footstep (only biped) or list of list of footstep.
+    overwrite-footstep-index is index to be overwritten. overwrite_fs_idx is used only in walking."
+   (send self :set-foot-steps-no-wait foot-step-list :overwrite-footstep-index overwrite-footstep-index)
    (send self :wait-foot-steps))
   (:set-foot-steps-with-param-no-wait
-   (foot-step-list step-height-list step-time-list toe-angle-list heel-angle-list)
+   (foot-step-list step-height-list step-time-list toe-angle-list heel-angle-list &key (overwrite-footstep-index 0))
    "Set foot step with step parameter and do not wait for step finish.
-    foot-step-list is list of footsteps.
-    step-height-list is list of step height.
-    step-time-list is list of step time.
-    toe-angle-list is list of toe angle.
-    heel-angle-list is list of heel angle."
+    foot-step-list is list of footstep (only biped) or list of list of footstep.
+    step-height-list is list of step height (only biped) or list of list of step height.
+    step-time-list is list of step time (only biped) or list of list of step time.
+    toe-angle-list is list of toe angle (only biped) or list of list of toe angle.
+    heel-angle-list is list of heel angle (only biped) or list of list of heel angle."
+   (unless (listp (car foot-step-list))
+     (setq foot-step-list (mapcar #'(lambda (fs) (list fs)) foot-step-list)
+           step-height-list (mapcar #'(lambda (sh) (list sh)) step-height-list)
+           step-time-list (mapcar #'(lambda (st) (list st)) step-time-list)
+           toe-angle-list (mapcar #'(lambda (ta) (list ta)) toe-angle-list)
+           heel-angle-list (mapcar #'(lambda (ha) (list ha)) heel-angle-list)))
    (send self :autobalancerservice_setfootstepswithparam
-         :fs
-         (mapcar #'(lambda (f)
-                     (send self :eus-footstep->abc-footstep f))
+         :fss
+         (mapcar #'(lambda (fs)
+                     (instance hrpsys_ros_bridge::openhrp_autobalancerservice_footsteps :init
+                               :fs
+                               (mapcar #'(lambda (f)
+                                           (send self :eus-footstep->abc-footstep f))
+                                       fs)))
                  foot-step-list)
-         :sps
-         (mapcar #'(lambda (sh st ta ha)
-                     (instance hrpsys_ros_bridge::openhrp_autobalancerservice_stepparam :init :step_height (* sh 1e-3) :step_time st :toe_angle ta :heel_angle ha))
+         :spss
+         (mapcar #'(lambda (shs sts tas has)
+                     (instance hrpsys_ros_bridge::openhrp_autobalancerservice_stepparams :init
+                               :sps
+                               (mapcar #'(lambda (sh st ta ha)
+                                           (instance hrpsys_ros_bridge::openhrp_autobalancerservice_stepparam :init :step_height (* sh 1e-3) :step_time st :toe_angle ta :heel_angle ha))
+                                       shs sts tas has)))
                  step-height-list step-time-list toe-angle-list heel-angle-list)
+         :overwrite_fs_idx overwrite-footstep-index
          ))
   (:set-foot-steps-with-param
-   (foot-step-list step-height-list step-time-list toe-angle-list heel-angle-list)
+   (foot-step-list step-height-list step-time-list toe-angle-list heel-angle-list &key (overwrite-footstep-index 0))
    "Set foot step with step parameter and wait for step finish.
     For arguments, please see :set-foot-steps-with-param-no-wait documentation."
-   (send self :set-foot-steps-with-param-no-wait foot-step-list step-height-list step-time-list toe-angle-list heel-angle-list)
+   (send self :set-foot-steps-with-param-no-wait foot-step-list step-height-list step-time-list toe-angle-list heel-angle-list :overwrite-footstep-index overwrite-footstep-index)
    (send self :wait-foot-steps))
   (:set-foot-steps-roll-pitch
    (angle &key (axis :x))
@@ -780,6 +951,13 @@
   (:set-foot-steps-with-base-height
    (fs av-list time-list)
    (send self :set-foot-steps-no-wait fs)
+   (send self :angle-vector-sequence av-list time-list)
+   (send self :wait-interpolation)
+   (send self :wait-foot-steps)
+   )
+  (:set-foot-steps-with-param-and-base-height
+   (fs-params av-list time-list)
+   (send self :set-foot-steps-with-param-no-wait fs-params)
    (send self :angle-vector-sequence av-list time-list)
    (send self :wait-interpolation)
    (send self :wait-foot-steps)
@@ -806,14 +984,24 @@
                                       :translate off)
                         :name :lleg))
      ))
+  (:get-remaining-foot-step-sequence-current-index
+   ()
+   "Get remaining foot steps from GaitGenerator and current index.
+   Return is (list (list current-support-foot-coords remaining-swing-dst-coords-0 ... ) current-index)."
+   (let ((ret (send self :autobalancerservice_getRemainingFootstepSequence)))
+     (list (mapcar #'(lambda (fs)
+                       (send self :abc-footstep->eus-footstep fs))
+                   (send ret :o_footstep))
+           (send ret :o_current_fs_idx))
+     ))
+  (:get-current-footstep-index
+   ()
+   (cadr (send self :get-remaining-foot-step-sequence-current-index)))
   (:get-remaining-foot-step-sequence
    ()
    "Get remaining foot steps from GaitGenerator.
    Return is (list current-support-foot-coords remaining-swing-dst-coords-0 ... )."
-   (mapcar #'(lambda (fs)
-               (send self :abc-footstep->eus-footstep fs))
-           (send (send self :autobalancerservice_getRemainingFootstepSequence) :o_footstep))
-   )
+   (car (send self :get-remaining-foot-step-sequence-current-index)))
   (:draw-remaining-foot-step-sequence
    (vwer
     &key (flush) (rleg-color #f(1 0 0)) (lleg-color #f(0 1 0))
@@ -863,7 +1051,10 @@
    (send self :autobalancerservice_waitFootSteps))
   ;; wrap :set-gait-generator-param to use symbol for default-orbit-type
   (:set-gait-generator-param
-   (&rest args &key default-orbit-type &allow-other-keys)
+   (&rest args
+    &key default-orbit-type
+         leg-default-translate-pos ;; [mm]
+    &allow-other-keys)
    (send* self :raw-set-gait-generator-param
           (append
            (if (memq :default-orbit-type args)
@@ -875,6 +1066,10 @@
                              (eval ot)
                            (error ";; no such :default-orbit-type ~A in :set-gait-generator-param~%" default-orbit-type))
                          ))))
+           (if (memq :leg-default-translate-pos args)
+               (let ((lo (copy-object (send (send self :get-gait-generator-param) :leg_default_translate_pos))))
+                 (setq (lo . ros::_data) (scale 1e-3 (apply #'concatenate float-vector leg-default-translate-pos)))
+                 (list :leg-default-translate-pos lo)))
            args)))
   (:print-gait-generator-orbit-type
    ()
@@ -898,50 +1093,30 @@
    ()
    (send (send self :autobalancerservice_getautobalancerparam) :i_param))
   (:set-auto-balancer-param
-   (&key default-zmp-offsets move-base-gain
-         graspless-manip-arm graspless-manip-mode
-         graspless-manip-p-gain
-         graspless-manip-reference-trans-pos graspless-manip-reference-trans-rot
-         transition-time
-         zmp-transition-time
-         adjust-footstep-transition-time)
-   (let* ((current-param (send self :get-auto-balancer-param))
-          (param (instance hrpsys_ros_bridge::Openhrp_AutoBalancerService_AutoBalancerParam
-                           :init
-                           :default_zmp_offsets
-                           (if default-zmp-offsets
-                               (let ((dzo (copy-object (send current-param :default_zmp_offsets))))
-                                 (setq (dzo . ros::_data)
-                                       (apply #'concatenate float-vector (mapcar #'(lambda (x) (scale 1e-3 x))
-                                                                                 default-zmp-offsets)))
-                                 dzo)
-                             (send current-param :default_zmp_offsets))
-                           :move_base_gain (if move-base-gain move-base-gain (send current-param :move_base_gain))
-                           :graspless_manip_mode (if graspless-manip-mode graspless-manip-mode (send current-param :graspless_manip_mode))
-                           :graspless_manip_arm (if graspless-manip-arm graspless-manip-arm (send current-param :graspless_manip_arm))
-                           :graspless_manip_p_gain (if graspless-manip-p-gain graspless-manip-p-gain (send current-param :graspless_manip_p_gain))
-                           :graspless_manip_reference_trans_pos
-                           (if graspless-manip-reference-trans-pos
-                               (scale 1e-3 graspless-manip-reference-trans-pos)
-                             (send current-param :graspless_manip_reference_trans_pos))
-                           :graspless_manip_reference_trans_rot
-                           (if graspless-manip-reference-trans-rot
-                               (matrix2quaternion graspless-manip-reference-trans-rot)
-                             (send current-param :graspless_manip_reference_trans_rot))
-                           :transition_time
-                           (if transition-time
-                               transition-time
-                             (send current-param :transition_time))
-                           :zmp_transition_time
-                           (if zmp-transition-time
-                               zmp-transition-time
-                             (send current-param :zmp_transition_time))
-                           :adjust_footstep_transition_time
-                           (if adjust-footstep-transition-time
-                               adjust-footstep-transition-time
-                             (send current-param :adjust_footstep_transition_time))
-                           )))
-     (send self :autobalancerservice_setautobalancerparam :i_param param)))
+   (&rest args
+    &key leg-names
+         default-zmp-offsets ;; [mm]
+         graspless-manip-reference-trans-pos ;; [mm]
+         graspless-manip-reference-trans-rot ;; rotation-matrix
+    &allow-other-keys)
+   (send* self :raw-set-auto-balancer-param
+          (append
+           (if (and (memq :leg-names args) leg-names)
+               (list :leg-names (mapcar #'(lambda (x) (format nil "~A" (string-downcase x))) leg-names)))
+           (if (and (memq :default-zmp-offsets args) default-zmp-offsets)
+               (let ((dzo (copy-object (send (send self :get-auto-balancer-param) :default_zmp_offsets)))
+                     (lnum (length (remove-if-not #'(lambda (x) (send robot x)) '(:rarm :larm :rleg :lleg)))))
+                 (setq (dzo . ros::_data)
+                       (apply #'concatenate float-vector (mapcar #'(lambda (x) (scale 1e-3 x))
+                                                                 (append default-zmp-offsets
+                                                                         (make-list (- lnum (length default-zmp-offsets))
+                                                                                    :initial-element (float-vector 0 0 0))))))
+                 (list :default-zmp-offsets dzo)))
+           (if (and (memq :graspless-manip-reference-trans-pos args) graspless-manip-reference-trans-pos)
+               (list :graspless-manip-reference-trans-pos (scale 1e-3 graspless-manip-reference-trans-pos)))
+           (if (and (memq :graspless-manip-reference-trans-rot args) graspless-manip-reference-trans-rot)
+               (list :graspless-manip-reference-trans-rot (matrix2quaternion graspless-manip-reference-trans-rot)))
+           args)))
   (:abc-footstep->eus-footstep
    (f)
    (make-coords :pos (scale 1e3 (send f :pos))
@@ -986,6 +1161,20 @@
    (ros::unsubscribe "cmd_vel")
    (print ";; stop cmd-vel mode done.")
    )
+  (:calc-dvel-with-velocity-center-offset
+   (ang velocity-center-offset)
+   "ang : [deg], offset vector [mm]"
+   (let* ((default-step-time (send (send self :get-gait-generator-param) :default_step_time))
+          (cen (make-cascoords :pos velocity-center-offset))
+          (cc (make-cascoords)))
+     (send cen :assoc cc)
+     (send cen :rotate (deg2rad ang) :z)
+     (let ((tf (send (make-coords) :transformation cc)))
+       (list
+        (/ (* 1e-3 (elt (send tf :worldpos) 0)) default-step-time)
+        (/ (* 1e-3 (elt (send tf :worldpos) 1)) default-step-time)
+        (/ ang default-step-time)
+        ))))
   )
 
 ;; SoftErrorLimiterService
@@ -1004,22 +1193,42 @@
 
 (defmethod rtm-ros-robot-interface
   (:set-st-param
-   (&rest args &key st-algorithm &allow-other-keys)
+   (&rest args
+    &key st-algorithm
+         eefm-pos-damping-gain eefm-rot-damping-gain eefm-pos-time-const-support eefm-rot-time-const
+    &allow-other-keys)
    "Set Stabilizer parameters.
     To learn more about arguments, please see (pprint (find-method *ri* :raw-set-st-param))."
    (unless (send self :get :default-st-param)
      (send self :put :default-st-param (send self :get-st-param)))
-   (send* self :raw-set-st-param
-          (append
-           (if (memq :st-algorithm args)
-               (list :st-algorithm
-                     (if (or (null st-algorithm) (integerp st-algorithm))
-                         st-algorithm
-                       (let ((sa (read-from-string (format nil "HRPSYS_ROS_BRIDGE::OPENHRP_STABILIZERSERVICE_STALGORITHM::*~A*" (string-downcase st-algorithm)))))
-                         (if (boundp sa)
-                             (eval sa)
-                           (error ";; no such :st-algorithm ~A in :set-st-param~%" st-algorithm))))))
-           args)))
+   (let ((prm (send self :get-st-param)))
+     (send* self :raw-set-st-param
+            (append
+             (if (memq :st-algorithm args)
+                 (list :st-algorithm
+                       (if (or (null st-algorithm) (integerp st-algorithm))
+                           st-algorithm
+                         (let ((sa (read-from-string (format nil "HRPSYS_ROS_BRIDGE::OPENHRP_STABILIZERSERVICE_STALGORITHM::*~A*" (string-downcase st-algorithm)))))
+                           (if (boundp sa)
+                               (eval sa)
+                             (error ";; no such :st-algorithm ~A in :set-st-param~%" st-algorithm))))))
+             (if (and (memq :eefm-pos-damping-gain args) eefm-pos-damping-gain)
+                 (let ((tmp (send prm :eefm_pos_damping_gain)))
+                   (setq (tmp . ros::_data) (apply #'concatenate float-vector eefm-pos-damping-gain))
+                   (list :eefm-pos-damping-gain tmp)))
+             (if (and (memq :eefm-rot-damping-gain args) eefm-rot-damping-gain)
+                 (let ((tmp (send prm :eefm_rot_damping_gain)))
+                   (setq (tmp . ros::_data) (apply #'concatenate float-vector eefm-rot-damping-gain))
+                   (list :eefm-rot-damping-gain tmp)))
+             (if (and (memq :eefm-rot-time-const args) eefm-rot-time-const)
+                 (let ((tmp (send prm :eefm_rot_time_const)))
+                   (setq (tmp . ros::_data) (apply #'concatenate float-vector eefm-rot-time-const))
+                   (list :eefm-rot-time-const tmp)))
+             (if (and (memq :eefm-pos-time-const-support args) eefm-pos-time-const-support)
+                 (let ((tmp (send prm :eefm_pos_time_const_support)))
+                   (setq (tmp . ros::_data) (apply #'concatenate float-vector eefm-pos-time-const-support))
+                   (list :eefm-pos-time-const-support tmp)))
+             args))))
   (:set-st-param-for-non-feedback-LIP-mode
    ()
    "Set Stabilizer parameters to make robot Linear Inverted Pendulum mode without state feedback.
@@ -1106,9 +1315,78 @@
          "HRPSYS_ROS_BRIDGE::OPENHRP_KALMANFILTERSERVICE_KFALGORITHM"))
 )
 
+;; EmergencyStopperService
+(defmethod rtm-ros-robot-interface
+  (:emergency-stop-motion
+   ()
+   (send self :emergencystopperservice_stopmotion))
+  (:hard-emergency-stop-motion
+   ()
+   (send self :emergencystopperservice_stopmotion :rosbridge-name "/HardEmergencyStopperServiceROSBridge"))
+  (:emergency-release-motion
+   ()
+   (send self :emergencystopperservice_releasemotion))
+  (:hard-emergency-release-motion
+   ()
+   (send self :emergencystopperservice_releasemotion :rosbridge-name "/HardEmergencyStopperServiceROSBridge"))
+  (:emergency-mode
+   ()
+   "Returns emergency mode."
+   (cdr (assoc :emergency-mode robot-state))
+   )
+  )
+
+;; GraspControllserService
+(defmethod rtm-ros-robot-interface
+  ;; To use GraspControllserService, please define
+  ;;  1. :get-hand-config-list
+  ;;  2. :start-grasp's target-error and gain-percentage
+  (:get-hand-config-list
+   ()
+   (error ";; :get-hand-config-list should be defined in subclass of (~A)~%" (class self))
+   )
+  (:start-grasp
+   (limb &key (target-error) (gain-percentage))
+   (unless (and target-error gain-percentage)
+     (error ";; :start-grasp target-error and gain-percentage should be defined in subclass of (~A)~%" (class self)))
+   (case limb
+     (:larm
+      (send self :set-servo-gain-percentage
+            (caddr (assoc :larm (send self :get-hand-config-list))) gain-percentage)
+      (send self :graspcontrollerservice_startgrasp
+            :name (cadr (assoc :larm (send self :get-hand-config-list))) :target_error target-error))
+     (:rarm
+      (send self :set-servo-gain-percentage
+            (caddr (assoc :rarm (send self :get-hand-config-list))) gain-percentage)
+      (send self :graspcontrollerservice_startgrasp
+            :name (cadr (assoc :rarm (send self :get-hand-config-list))) :target_error target-error))
+     (:arms
+      (send self :start-grasp :rarm :target-error target-error :gain-percentage gain-percentage)
+      (send self :start-grasp :larm :target-error target-error :gain-percentage gain-percentage))
+     )
+   )
+  (:stop-grasp
+   (limb)
+   (case limb
+     (:larm
+      (send self :set-servo-gain-percentage (caddr (assoc :larm (send self :get-hand-config-list))) 100)
+      (send self :graspcontrollerservice_stopgrasp :name (cadr (assoc :larm (send self :get-hand-config-list)))))
+     (:rarm
+      (send self :set-servo-gain-percentage (caddr (assoc :rarm (send self :get-hand-config-list))) 100)
+      (send self :graspcontrollerservice_stopgrasp :name (cadr (assoc :rarm (send self :get-hand-config-list)))))
+     (:arms
+      (send self :stop-grasp :rarm)
+      (send self :stop-grasp :larm))
+     )
+   )
+  )
+
 (defmethod rtm-ros-robot-interface
   (:start-default-unstable-controllers
-   (&key (ic-limbs '(:rarm :larm)) (abc-limbs '(:rleg :lleg)))
+   (&key (ic-limbs '(:rarm :larm))
+         (abc-limbs (if (not (every #'null (send robot :arms)))
+                        '(:rleg :lleg :rarm :larm)
+                      '(:rleg :lleg))))
    "Start default unstable RTCs controller mode.
     Currently Stabilzier, AutoBalancer, and ImpedanceController are started."
    (send self :start-st)
@@ -1155,7 +1433,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun dump-seq-pattern-file
-  (rs-list output-basename &key (initial-sync-time 3.0)) ;; [s]
+  (rs-list output-basename &key (initial-sync-time 3.0) (robot)) ;; [s]
   "Dump pattern file for SequencePlayer.
      rs-list : list of (list :time time0 :angle-vector av :root-coords rc ...).
                Fields other than :time and :angle-vector are optional.
@@ -1236,6 +1514,8 @@
        (format wrf "~%")
        )) ;; with-open-file for .wrenches file
     )
+  (if (and (cadr (memq :contact-state (car rs-list))) robot)
+      (setq rs-list (add-optional-data-from-rs-list rs-list robot)))
   (when (cadr (memq :optional-data (car rs-list)))
     (with-open-file
      (opf (format nil "~A.optionaldata" output-basename) :direction :output) ;; optionaldata file
@@ -1249,6 +1529,93 @@
        )) ;; with-open-file for .optionaldata
     )
   )
+
+(defun add-optional-data-from-rs-list
+  (rs-list robot
+  &key (all-limbs
+        (mapcar #'(lambda (fs)
+                    (find-if #'(lambda (l) (equal fs (car (send robot l :force-sensors)))) '(:rleg :lleg :rarm :larm)))
+                (send robot :force-sensors)))
+       (limbs
+        (remove nil
+                (mapcar #'(lambda (fs)
+                    (find-if #'(lambda (l) (equal fs (car (send robot l :force-sensors))))
+                             (case (length (cadr (memq :contact-state (car rs-list))))
+                                   (2 '(:rleg :lleg))
+                                   (4 '(:rleg :lleg :rarm :larm)))))
+                (send robot :force-sensors))))
+       (add-optional-data-p t))
+  "Add optionalData from rs-list.
+   all-limbs is all limbs with ForceSensor in VRML.
+   limbs is all limbs included in rs-list.
+   If add-optional-data-p is nil, return contact state and swing support time list.
+   :contact-state is required in rs-list.
+   :support = 1.0, :swing = 0.0"
+  ;; Get contact-state list
+  (let ((cs-list
+         (mapcar #'(lambda (rs)
+                     (mapcar #'(lambda (l)
+                                 (cond
+                                  ((not (memq l limbs)) 0.0)
+                                  ((eq (elt (cadr (memq :contact-state rs)) (position l limbs)) :support) 1.0)
+                                  (t 0.0)))
+                             all-limbs))
+                 rs-list)))
+    ;; Add remain time for contact-states
+    (let* ((dt (- (cadr (memq :time (cadr rs-list))) (cadr (memq :time (car rs-list)))))
+           (prev-cs (cadr (memq :contact-state (car rs-list))))
+           (contact-change-time-list (make-list (length limbs)))
+           (count-time-list (make-list (length limbs) :initial-element 0))
+           (limb-idx-list (let ((cnt -1)) (mapcar #'(lambda (x) (incf cnt)) (make-list (length limbs)))))
+           (all-limb-idx-list (let ((cnt -1)) (mapcar #'(lambda (x) (incf cnt)) (make-list (length all-limbs)))))
+           (swing-support-time-list)
+           (default-swing-support-time 1.0)) ;; [s]
+      ;; Get time count when contac state changes
+      (dolist (rs rs-list)
+        (let ((cs (cadr (memq :contact-state rs))))
+          (mapcar #'(lambda (idx)
+                      (incf (elt count-time-list idx))
+                      (when (not (eq (elt cs idx) (elt prev-cs idx)))
+                        (push (elt count-time-list idx) (elt contact-change-time-list idx))
+                        (setf (elt count-time-list idx) 0)))
+                  limb-idx-list)
+          (setq prev-cs cs)
+          ))
+      (setq contact-change-time-list (mapcar #'(lambda (x) (reverse x)) contact-change-time-list))
+      (setq contact-change-time-list (mapcar #'(lambda (l)
+                                                 (if (memq l limbs)
+                                                     (elt contact-change-time-list (position l limbs))))
+                                             all-limbs))
+      ;; Calc remain time
+      (setq count-time-list
+            (mapcar #'(lambda (idx)
+                        (if (elt contact-change-time-list idx)
+                            (car (elt contact-change-time-list idx))
+                          (round (/ default-swing-support-time dt))))
+                    all-limb-idx-list))
+      (dolist (rs rs-list)
+        (push (mapcar #'(lambda (idx)
+                          (if (elt contact-change-time-list idx)
+                              (progn
+                                (if (= (elt count-time-list idx) 1) ;; Contact change
+                                    (progn
+                                      (pop (elt contact-change-time-list idx))
+                                      (setf (elt count-time-list idx) (car (elt contact-change-time-list idx)))) ;; Reset count
+                                  (setf (elt count-time-list idx) (- (elt count-time-list idx) 1)))
+                                ;; Return count => time [s]
+                                (if (elt count-time-list idx)
+                                    (* dt (elt count-time-list idx))
+                                  default-swing-support-time))
+                            default-swing-support-time))
+                      all-limb-idx-list)
+              swing-support-time-list)
+        )
+      ;; Add contact state and swing support time to rs-list as optionalData
+      (mapcar #'(lambda (rs cs sstime)
+                  (append rs (list :optional-data
+                                   (concatenate float-vector cs sstime))))
+              rs-list cs-list (reverse swing-support-time-list))
+      )))
 
 (defun load-from-seq-pattern-file (input-basename)
   "Load from seq pattern file and generate robot state list."
@@ -1396,6 +1763,29 @@
    When print-mode is :python, print parameters in Python hrpsys_config style."
   (calculate-toe-heel-offsets robot :print-mode pm :pos-or-zmp :zmp))
 
+(defun calculate-sole-margin-params
+  (robot &key ((:print-mode pm) :euslisp) (margin-ratio 1.0))
+  "Calculate sole edge margin in Stabilizer.
+   robot is robot model.
+   margin-ratio is multiplied by values (1.0 by default).
+   When print-mode is :euslisp, print parameters in Euslisp style.
+   When print-mode is :python, print parameters in Python hrpsys_config style."
+  (let* ((sp-vertices (mapcar #'(lambda (x) (send robot :rleg :end-coords :inverse-transform-vector x)) (send (send robot :support-polygon :rleg) :vertices)))
+         (front-margin (* margin-ratio (elt (find-extream sp-vertices #'(lambda (x) (elt x 0)) #'>) 0)))
+         (rear-margin (* margin-ratio (abs (elt (find-extream sp-vertices #'(lambda (x) (elt x 0)) #'<) 0))))
+         (inside-margin (* margin-ratio (elt (find-extream sp-vertices #'(lambda (x) (elt x 1)) #'>) 1)))
+         (outside-margin (* margin-ratio (abs (elt (find-extream sp-vertices #'(lambda (x) (elt x 1)) #'<) 1)))))
+    (case
+        pm
+      (:euslisp
+       (format t "(send *ri* :set-st-param :eefm-leg-front-margin (* 1e-3 ~A) :eefm-leg-rear-margin (* 1e-3 ~A) :eefm-leg-inside-margin (* 1e-3 ~A) :eefm-leg-outside-margin (* 1e-3 ~A))~%"
+               front-margin rear-margin inside-margin outside-margin))
+      (:python
+       (format t "stp=hcf.st_svc.getParameter()[1];~%")
+       (format t "stp.eefm_leg_front_margin=1e-3*~A;stp.eefm_leg_rear_margin=1e-3*~A;stp.eefm_leg_inside_margin=1e-3*~A;stp.eefm_leg_outside_margin=1e-3*~A;~%"
+               front-margin rear-margin inside-margin outside-margin)
+       (format t "hcf.st_svc.setParameter(stp);~%")))
+    ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; utility functions for project generator generation
