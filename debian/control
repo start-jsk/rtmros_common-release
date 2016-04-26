@@ -1,0 +1,12 @@
+Source: ros-jade-rtmbuild
+Section: misc
+Priority: extra
+Maintainer: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
+Build-Depends: debhelper (>= 9.0.0), libomniorb4-dev, omniidl, omniorb, omniorb-idl, omniorb-nameserver, pkg-config, ros-jade-catkin, ros-jade-cmake-modules, ros-jade-message-generation, ros-jade-openrtm-aist, ros-jade-openrtm-aist-python, ros-jade-rostest, ros-jade-std-msgs
+Homepage: http://ros.org/wiki/rtmbuild
+Standards-Version: 3.9.2
+
+Package: ros-jade-rtmbuild
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libblas-dev, liblapack-dev, libomniorb4-dev, omniidl, omniorb, omniorb-idl, omniorb-nameserver, pkg-config, ros-jade-cmake-modules, ros-jade-message-generation, ros-jade-message-runtime, ros-jade-openrtm-aist, ros-jade-openrtm-aist-python, ros-jade-rostest, ros-jade-std-msgs
+Description: Build scripts for OpenRTM and OpenHRP
