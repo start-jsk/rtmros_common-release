@@ -1,0 +1,12 @@
+Source: ros-jade-hrpsys-tools
+Section: misc
+Priority: extra
+Maintainer: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
+Build-Depends: debhelper (>= 9.0.0), ros-jade-catkin, ros-jade-hrpsys, ros-jade-rostest
+Homepage: http://ros.org/wiki/hrpsys_tools
+Standards-Version: 3.9.2
+
+Package: ros-jade-hrpsys-tools
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-jade-hrpsys, ros-jade-openrtm-tools
+Description: The hrpsys_tools package
