@@ -1,0 +1,12 @@
+Source: ros-jade-openrtm-tools
+Section: misc
+Priority: extra
+Maintainer: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
+Build-Depends: debhelper (>= 9.0.0), ros-jade-catkin, ros-jade-openrtm-aist, ros-jade-openrtm-aist-python, ros-jade-rosbash, ros-jade-rostest, ros-jade-rtshell
+Homepage: http://ros.org/wiki/openrtm_tools
+Standards-Version: 3.9.2
+
+Package: ros-jade-openrtm-tools
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-jade-openrtm-aist, ros-jade-openrtm-aist-python, ros-jade-rosbash, ros-jade-rtshell
+Description: The openrtm_tools package
