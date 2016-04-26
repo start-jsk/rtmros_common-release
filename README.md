@@ -1,3 +1,33 @@
+## rtmros_common (indigo) - 1.3.2-0
+
+The packages in the `rtmros_common` repository were released into the `indigo` distro by running `/var/lib/jenkins/send_to_bloom.py start-jsk rtmros_common` on `Tue, 26 Apr 2016 04:43:25 -0000`
+
+These packages were released:
+- `hrpsys_ros_bridge`
+- `hrpsys_tools`
+- `openrtm_ros_bridge`
+- `openrtm_tools`
+- `rosnode_rtc`
+- `rtmbuild`
+- `rtmros_common`
+
+Version of package(s) in repository `rtmros_common`:
+
+- upstream repository: https://github.com/start-jsk/rtmros_common.git
+- release repository: https://github.com/tork-a/rtmros_common-release.git
+- rosdistro version: `1.3.1-0`
+- old version: `1.3.1-0`
+- new version: `1.3.2-0`
+
+Versions of tools used:
+
+- bloom version: `0.5.21`
+- catkin_pkg version: `0.2.10`
+- rosdep version: `0.11.4`
+- rosdistro version: `0.4.7`
+- vcstools version: `0.1.38`
+
+
 ## rtmros_common (indigo) - 1.3.1-0
 
 The packages in the `rtmros_common` repository were released into the `indigo` distro by running `/var/lib/jenkins/send_to_bloom.py start-jsk rtmros_common` on `Wed, 16 Dec 2015 15:21:36 -0000`
