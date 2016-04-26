@@ -1,0 +1,13 @@
+Source: ros-jade-hrpsys-ros-bridge
+Section: misc
+Priority: extra
+Maintainer: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
+Build-Depends: debhelper (>= 9.0.0), git-core, hostname, net-tools, pkg-config, procps, python-rosdep, ros-jade-actionlib, ros-jade-angles, ros-jade-camera-info-manager, ros-jade-catkin, ros-jade-collada-urdf, ros-jade-control-msgs, ros-jade-diagnostic-aggregator, ros-jade-diagnostic-msgs, ros-jade-dynamic-reconfigure, ros-jade-euscollada, ros-jade-geometry-msgs, ros-jade-hrpsys (>= 315.3.1), ros-jade-hrpsys-tools, ros-jade-image-transport, ros-jade-message-generation, ros-jade-mk, ros-jade-nav-msgs, ros-jade-pr2-controllers-msgs, ros-jade-pr2-msgs, ros-jade-robot-pose-ekf, ros-jade-robot-state-publisher, ros-jade-rosbuild, ros-jade-roscpp, ros-jade-roslang, ros-jade-rosnode, ros-jade-rostest, ros-jade-rqt-gui, ros-jade-rqt-gui-py, ros-jade-rqt-robot-dashboard, ros-jade-rqt-robot-monitor, ros-jade-rtmbuild, ros-jade-sensor-msgs, ros-jade-tf, ros-jade-visualization-msgs, subversion
+Homepage: http://wiki.ros.org/hrpsys_ros_bridge
+Standards-Version: 3.9.2
+
+Package: ros-jade-hrpsys-ros-bridge
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ipython, python-psutil, ros-jade-actionlib, ros-jade-camera-info-manager, ros-jade-collada-urdf, ros-jade-control-msgs, ros-jade-diagnostic-aggregator, ros-jade-diagnostic-msgs, ros-jade-dynamic-reconfigure, ros-jade-geometry-msgs, ros-jade-hrpsys, ros-jade-hrpsys-tools, ros-jade-image-transport, ros-jade-nav-msgs, ros-jade-pr2-controllers-msgs, ros-jade-pr2-msgs, ros-jade-robot-pose-ekf, ros-jade-robot-state-publisher, ros-jade-roscpp, ros-jade-rosnode, ros-jade-rostest, ros-jade-rqt-gui, ros-jade-rqt-gui-py, ros-jade-rqt-robot-dashboard, ros-jade-rqt-robot-monitor, ros-jade-rtmbuild, ros-jade-sensor-msgs, ros-jade-tf, ros-jade-visualization-msgs
+Description: hrpsys_ros_bridge package provides basic functionalities to bind hrpsys, a OpenRTM-based controller, and ROS.
+ By using this package, you can write your ROS packages that communicate with your non-ROS robots that run on hrpsys. For communicating with the robots that run on OpenRTM without hrpsys, you can use openrtm_ros_bridge package.
