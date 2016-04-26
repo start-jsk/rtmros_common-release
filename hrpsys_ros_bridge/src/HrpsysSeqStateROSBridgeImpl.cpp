@@ -178,7 +178,10 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridgeImpl::onInitialize()
           rpy = hrp::rpyFromRot(sensor->localR * m);
         }
       else
-        rpy = hrp::rpyFromRot(sensor->localR);
+      {
+        // localR is parent. https://github.com/start-jsk/rtmros_common/pull/925
+        rpy = hrp::rpyFromRot(sensor->link->Rs.inverse() * sensor->localR);
+      }
       si.transform.setRotation( tf::createQuaternionFromRPY(rpy(0), rpy(1), rpy(2)) );
       OpenHRP::LinkInfoSequence_var links = bodyinfo->links();
       for ( int k = 0; k < links->length(); k++ ) {
@@ -299,9 +302,20 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridgeImpl::onInitialize()
         std::string tmpname = m_mcforceName[ii];
         tmpname.erase(0,4);
         hrp::ForceSensor* sensor = body->sensor<hrp::ForceSensor>(tmpname);
+        std::string sensor_link_name;
+        if ( sensor ) {
+          // real force sensor
+          sensor_link_name = sensor->link->name;
+        } else if (sensor_info.find(sensor_name) !=  sensor_info.end()) {
+          // virtual force sensor
+          sensor_link_name =  sensor_info[sensor_name].link_name;
+        } else {
+          std::cerr << "[" << m_profile.instance_name << "]   unknown force param" << std::endl;
+          continue;
+        }
         hrp::Link* alink = body->link(ee_target);
         while (alink != NULL && alink->name != ee_base && !is_sensor_exists) {
-          if ( alink->name == sensor->link->name ) {
+          if ( alink->name == sensor_link_name ) {
             is_sensor_exists = true;
             sensor_name = tmpname;
           }
