@@ -12,6 +12,7 @@
 (defmethod rtm-ros-robot-interface
   (:init
    (&rest args)
+   ":init method. This method should be overriden in subclass."
    (prog1
        (send-super* :init args)
      (send self :define-all-ROSBridge-srv-methods)
@@ -272,12 +273,12 @@
          (error ";; no such interpolation-mode ~A in :set-interpolation-mode~%" interpolation-mode)))
      ))
   ;;
-  ;; Calculate zmp from state [mm]
-  ;; example ;; (progn (send *ri* :go-velocity 0 0 0) (objects (list (*ri* . robot))) (do-until-key (let ((zmp (send *ri* :calc-zmp-from-state))) (send *irtviewer* :draw-objects :flush nil) (send zmp :draw-on :flush t :size 300))))
   (:calc-zmp-from-state
    (&key (wrt :world))
-   ;; :wrt is :local => calc local zmp for (*ri* . robot)'s root-link coords
-   ;; :wrt is :world => calc world zmp for (*ri* . robot)
+   "Calculate zmp from state [mm].
+    For example ;; (progn (send *ri* :go-velocity 0 0 0) (objects (list (*ri* . robot))) (do-until-key (let ((zmp (send *ri* :calc-zmp-from-state))) (send *irtviewer* :draw-objects :flush nil) (send zmp :draw-on :flush t :size 300))))
+    :wrt is :local => calc local zmp for (*ri* . robot)'s root-link coords
+    :wrt is :world => calc world zmp for (*ri* . robot)"
    (send self :state)
    (send robot :calc-zmp-from-forces-moments
          (mapcar #'(lambda (x) (send self :force-vector x)) '(:rleg :lleg))
@@ -286,6 +287,8 @@
    )
   (:get-robot-date-string
    ()
+   "Get string including robot name and date.
+    For example, \"SampleRobot_20160412163151\"."
    (let* ((dt (unix:localtime)))
      (format nil "~A_~A~A~A~A~A~A"
              (send (send self :robot) :name)
@@ -295,55 +298,99 @@
              (digits-string (aref dt 2) 2)
              (digits-string (aref dt 1) 2)
              (digits-string (aref dt 0) 2))))
+  (:def-limb-controller-method
+    (limb &key (debugp nil))
+    "Method to add limb controller action by default setting.
+     Currently, FollowJointTrajectoryAction is used.
+     This method calls defmethod. If :debugp t, we can see defmethod s-expressions."
+    (let ((sexp `(defmethod ,(send (class self):name)
+                   (,(read-from-string (format nil "~A-controller" limb))
+                    ()
+                    (list
+                     (list
+                      (cons :group-name ,(string-downcase limb))
+                      (cons :controller-action ,(format nil "~A_controller/follow_joint_trajectory_action" (string-downcase limb)))
+                      (cons :controller-state ,(format nil "~A_controller/state" (string-downcase limb)))
+                      (cons :action-type control_msgs::FollowJointTrajectoryAction)
+                      (cons :joint-names (list ,@(send-all (send robot limb :joint-list) :name))))
+                     )))))
+      (if debugp
+          (pprint (macroexpand sexp)))
+      (eval sexp)
+      ))
   )
 
 ;; define Euslisp setter and getter method
 (defun def-set-get-param-method
   (param-class ;; parameter class
-   set-param-method-name get-param-method-name ;; Euslisp setter and getter method which user want to define
+   set-param-method-name get-param-method-name getarg-method-name ;; Euslisp setter and getter method which user want to define
    set-param-idl-name get-param-idl-name ;; raw setter and getter method converted from idl2srv files
    &key (optional-args) ;; arguments for raw setter and getter method
         (debug nil))
-  (let* ((param-slots-list ;; get slots list for param-class
-          (remove-if #'(lambda (x) (string= "plist" x))
-                     (mapcar #'(lambda (x) (string-left-trim "::_" (string-left-trim "ros" (format nil "~A" x))))
-                             (concatenate cons (send (eval param-class) :slots)))))
-         (getter-defmethod-macro
-           `(defmethod rtm-ros-robot-interface
-              (,get-param-method-name
-               ,(if optional-args (list (cadr optional-args)) (list ))
-               (send (send self ,get-param-idl-name ,@optional-args) :i_param))))
-         ;; generate defmethod like
-         ;;  (:set-xx-param (&rest args &key yy-zz)
-         ;;   (let ((current-param (send self :get-xx-param))
-         ;;         (param (instance ww :init (if (memq :yy-zz args) (cadr (memq :yy-zz args)) (send current-param :yy_zz))))
-         ;;      (send self :aaService_setParameter :i_param param)))
-         (setter-defmethod-macro
-           `(defmethod rtm-ros-robot-interface
-              (,set-param-method-name
-               ,(append (if optional-args (list (cadr optional-args))) (list '&rest 'args '&key) (mapcar #'(lambda (x) (read-from-string (substitute (elt "-" 0) (elt "_" 0) x))) param-slots-list)) ;; replace _ => - for Euslisp friendly argument
-               (let* ((current-param ,(append (list 'send 'self get-param-method-name) (if optional-args (list (cadr optional-args)))))
-                      (param (instance ,param-class
-                                       :init
-                                       ,@(apply #'append
-                                                (mapcar #'(lambda (x)
-                                                            (let* ((eus-sym (read-from-string (substitute (elt "-" 0) (elt "_" 0) x)))
-                                                                   (eus-keyword (read-from-string (format nil ":~A" eus-sym)))
-                                                                   (param-sym (read-from-string (format nil ":~A" x))))
-                                                              (list param-sym (list 'if
-                                                                                    (list 'memq eus-keyword 'args)
-                                                                                    (list 'cadr (list 'memq eus-keyword 'args))
-                                                                                    (list 'send 'current-param param-sym)))))
-                                                        param-slots-list))
-                                       )))
-                 (send self ,set-param-idl-name :i_param param ,@optional-args)
-                 )))))
-    (when debug
-      (pprint (macroexpand getter-defmethod-macro))
-      (pprint (macroexpand setter-defmethod-macro)))
-    (eval getter-defmethod-macro)
-    (eval setter-defmethod-macro)
-    t))
+  (when (boundp param-class)
+    (let* ((param-slots-list ;; get slots list for param-class
+            (remove-if #'(lambda (x) (string= "plist" x))
+                       (mapcar #'(lambda (x) (string-left-trim "::_" (string-left-trim "ros" (format nil "~A" x))))
+                               (concatenate cons (send (eval param-class) :slots)))))
+           (param-name
+            ;; Extract param class, e.g., extract zz from hrpsys_ros_bridge::xx_yy_zz
+            (car (last (read-from-string (substitute (elt " " 0) (elt ":" 0) (substitute (elt " " 0) (elt "_" 0) (format nil "(~A)" param-class)))))))
+           (getter-defmethod-macro
+            `(defmethod rtm-ros-robot-interface
+               (,get-param-method-name
+                ;; Arguments
+                ,(if optional-args (list (cadr optional-args)) (list ))
+                ;; Documentation string
+                ,(unless (substringp "raw-" (string-downcase get-param-method-name))
+                   (format nil "Get ~A." param-name))
+                ;; Implementation
+                (send (send self ,get-param-idl-name ,@optional-args) :i_param))))
+           ;; generate defmethod like
+           ;;  (:set-xx-param (&rest args &key yy-zz)
+           ;;   (let ((current-param (send self :get-xx-param))
+           ;;         (param (instance ww :init (if (memq :yy-zz args) (cadr (memq :yy-zz args)) (send current-param :yy_zz))))
+           ;;      (send self :aaService_setParameter :i_param param)))
+           (setter-defmethod-macro
+            `(defmethod rtm-ros-robot-interface
+               (,set-param-method-name
+                ;; Arguments
+                ,(append (if optional-args (list (cadr optional-args))) (list '&rest 'args '&key) (mapcar #'(lambda (x) (read-from-string (substitute (elt "-" 0) (elt "_" 0) x))) param-slots-list)) ;; replace _ => - for Euslisp friendly argument
+                ;; Documentation string
+                ,(unless (substringp "raw-" (string-downcase set-param-method-name))
+                   (format nil "Set ~A. For arguments, please see (send *ri* ~A)." param-name getarg-method-name))
+                ;; Implementation
+                (let* ((current-param ,(append (list 'send 'self get-param-method-name) (if optional-args (list (cadr optional-args)))))
+                       (param (instance ,param-class
+                                        :init
+                                        ,@(apply #'append
+                                                 (mapcar #'(lambda (x)
+                                                             (let* ((eus-sym (read-from-string (substitute (elt "-" 0) (elt "_" 0) x)))
+                                                                    (eus-keyword (read-from-string (format nil ":~A" eus-sym)))
+                                                                    (param-sym (read-from-string (format nil ":~A" x))))
+                                                               (list param-sym (list 'if
+                                                                                     (list 'memq eus-keyword 'args)
+                                                                                     (list 'cadr (list 'memq eus-keyword 'args))
+                                                                                     (list 'send 'current-param param-sym)))))
+                                                         param-slots-list))
+                                        )))
+                  (send self ,set-param-idl-name :i_param param ,@optional-args)
+                  ))))
+           (getarg-defmethod-macro
+            `(defmethod rtm-ros-robot-interface
+               (,getarg-method-name
+                ()
+                ,(format nil "Get arguments of ~A" set-param-method-name)
+                ,(append '(list) (mapcar #'(lambda (x) (read-from-string (format nil ":~A" (substitute (elt "-" 0) (elt "_" 0) x)))) param-slots-list)))))
+           )
+      (when debug
+        (pprint (macroexpand getter-defmethod-macro))
+        (pprint (macroexpand setter-defmethod-macro))
+        (pprint (macroexpand getarg-defmethod-macro))
+        )
+      (eval getter-defmethod-macro)
+      (eval setter-defmethod-macro)
+      (eval getarg-defmethod-macro)
+      t)))
 
 ;; SequencePlayerService
 (defmethod rtm-ros-robot-interface
@@ -375,18 +422,39 @@
    )
   (:wait-interpolation-of-group
    (groupname)
+   "Wait interpolation of group.
+    !!This method is not recommended, please use :wait-interpolation method like (send *ri* :wait-interpolation :head-controller).!!"
    (send self :sequenceplayerservice_waitinterpolationofgroup :gname groupname))
   (:add-joint-group
-   (groupname jnames)
+   (groupname &optional (jnames
+                         (if (find-method self (read-from-string (format nil ":~A-controller" (string-downcase groupname))))
+                             (cdr (assoc :joint-names (car (send self (read-from-string (format nil ":~A-controller" (string-downcase groupname))))))))))
+   "Add joint group for SequencePlayer.
+    groupname is joint group name such as rarm or lleg.
+    jnames is list of joint name."
+   (unless jnames
+     (error ";; jnames argument is require in :add-joint-group~%"))
    (send self :sequenceplayerservice_addjointgroup :gname groupname :jnames jnames))
   (:remove-joint-group
    (groupname)
+   "Remove joint group for SequencePlayer.
+    groupname is joint group name such as rarm or lleg."
    (send self :sequenceplayerservice_removejointgroup :gname groupname))
   (:set-joint-angles-of-group
    (groupname av tm)
+   "Set joint angles of group.
+    !!This method is not recommended, please use :angle-vector method like (send *ri* :angle-vector (send *robot* :angle-vector) 2000 :head-controller).!!"
    (send self :sequenceplayerservice_setjointanglesofgroup :gname groupname :jvs av :tm tm))
-  (:load-pattern (basename &optional (tm 0.0)) (send self :sequenceplayerservice_loadpattern :basename basename :tm tm))
-  (:wait-interpolation-seq () (send self :sequenceplayerservice_waitinterpolation))
+  (:load-pattern
+   (basename &optional (tm 0.0))
+   "Load pattern files, such as xx.pos and xx.waist.
+    For pattern file definitions, please see loadPattern in SequencePlayer documentation in hrpsys-base API Doc."
+   (send self :sequenceplayerservice_loadpattern :basename basename :tm tm))
+  (:wait-interpolation-seq
+   ()
+   "Directly call SequencePlayer waitInterpolation.
+    This can be used for force/moment interpolation."
+   (send self :sequenceplayerservice_waitinterpolation))
   (:sync-controller
    (controller &optional (interpolation-time 1000) (blockp t))
    (let* ((controller-info (car (send self controller)))
@@ -470,16 +538,20 @@
 (defmethod rtm-ros-robot-interface
   (:set-tolerance
    (&key (tolerance 0.1) (link-pair-name "all"))
+   "Set tolerance [m] of collision detection with given link-pair-name (all by default)."
    (send self :collisiondetectorservice_settolerance
          :link_pair_name link-pair-name :tolerance tolerance))
   (:start-collision-detection
    ()
+   "Enable collision detection."
    (send self :collisiondetectorservice_enablecollisiondetection))
   (:stop-collision-detection
    ()
+   "Disable collision detection."
    (send self :collisiondetectorservice_disablecollisiondetection))
   (:get-collision-status
    ()
+   "Get collision status."
    (send (send self :collisiondetectorservice_getcollisionstatus) :cs)
    )
   )
@@ -509,20 +581,28 @@
 (defmethod rtm-ros-robot-interface
   (:set-servo-gain-percentage
    (name percentage)
+   "Set servo gain percentage [0-100] with given name."
    (send self :robothardwareservice_setservogainpercentage :name name :percentage percentage))
-  (:remove-force-sensor-offset () (send self :robothardwareservice_removeforcesensoroffset))
+  (:remove-force-sensor-offset
+   ()
+   "Remove force sensor offset.
+    This function takes 10[s]. Please keep the robot static and make sure that robot's sensors do not contact with any objects."
+   (send self :robothardwareservice_removeforcesensoroffset))
   (:set-servo-error-limit
     (name limit)
+    "Set RobotHardware servo error limit [rad] with given name."
     (send self :robothardwareservice_setservoerrorlimit :name name :limit limit)
     )
   (:calibrate-inertia-sensor
    ()
+   "Calibrate inetria sensor.
+    This function takes 10[s]. Please keep the robot static."
    (send self :robothardwareservice_calibrateInertiaSensor)
    )
   )
 
 (def-set-get-param-method 'hrpsys_ros_bridge::OpenHRP_ImpedanceControllerService_impedanceParam
-  :raw-set-impedance-controller-param :raw-get-impedance-controller-param
+  :raw-set-impedance-controller-param :raw-get-impedance-controller-param :get-impedance-controller-param-arguments
   :impedancecontrollerservice_setimpedancecontrollerparam :impedancecontrollerservice_getimpedancecontrollerparam
   :optional-args (list :name 'name))
 
@@ -577,7 +657,8 @@
   (:set-impedance-controller-param
    (limb &rest args)
    "Set impedance controller parameter like (send *ri* :set-impedance-controller-param :rarm :K-p 400).
-    limb should be limb symbol name such as :rarm, :larm, :rleg, :lleg, :arms, or :legs."
+    limb should be limb symbol name such as :rarm, :larm, :rleg, :lleg, :arms, or :legs.
+    For arguments, please see (send *ri* :get-impedance-controller-param-arguments)."
    (send* self :force-sensor-method
           limb
           #'(lambda (name &rest _args)
@@ -618,7 +699,7 @@
 
 ;; ImpedanceController's ObjectTurnaroundDetector
 (def-set-get-param-method 'hrpsys_ros_bridge::OpenHRP_ImpedanceControllerService_objectTurnaroundDetectorParam
-  :set-object-turnaround-detector-param :get-object-turnaround-detector-param
+  :set-object-turnaround-detector-param :get-object-turnaround-detector-param :get-object-turnaround-detector-param-arguments
   :impedancecontrollerservice_setObjectTurnaroundDetectorParam
   :impedancecontrollerservice_getObjectTurnaroundDetectorParam)
 (defmethod rtm-ros-robot-interface
@@ -648,10 +729,11 @@
                  (push (subseq vec (* i 3) (+ (* i 3) 3)) vret))
                (reverse vret))))
      (let ((ret (send self :impedancecontrollerservice_getObjectForcesMoments)))
-       (list (split-vector (send (send ret :o_forces) :data)) (split-vector (send (send ret :o_moments) :data)))
+       (list (split-vector (send (send ret :o_forces) :data))
+             (split-vector (send (send ret :o_moments) :data))
+             (send ret :o_3dofwrench))
        ))
    )
-  ;; !!Currently for resultant forces!!
   (:set-object-turnaround-ref-force
    (&key (limbs '(:rarm :larm))
          (axis (float-vector 0 0 -1))
@@ -659,13 +741,18 @@
          (max-ref-force)
          (detect-time-offset 2000.0)
          (set-ref-force-time 2000.0)
-         (set-ref-force-p t))
+         (set-ref-force-p t)
+         (periodic-time 200) ;; [msec]
+         )
    "Set object turnaround reference force.
     axis is resultant force direction.
-    max-time is max time [msec].
-    detect-time-offset is additional checking time [msec]."
+    max-time is max time [msec] and max-ref-force is max reference resultant force.
+    detect-time-offset is additional checking time [msec].
+    set-ref-force-time is time to set reference force [msec].
+    If set-ref-force-p is t, set estimated reference force. Otherwise, set reference force to zero.
+    periodic-time is loop wait time[msec]."
    (format t ";; Start object turnaround detection~%")
-   (send self :set-object-turnaround-detector-param :axis axis)
+   (send self :set-object-turnaround-detector-param :axis axis :detector-total-wrench 0)
    (send self :set-ref-force
          (scale (/ max-ref-force (length limbs)) axis)
          max-time
@@ -679,7 +766,7 @@
       (not (not (memq detector-mode '(:mode_started :mode_detector_idle))))
       (setq detector-mode (send self :check-object-turnaround-detection))
       (format t ";;   Detecting... (detector-mode = ~A, current force moment = ~A)~%" detector-mode (send self :get-otd-object-forces-moments))
-      (unix:usleep (* 1000 500)))
+      (unix:usleep (* 1000 periodic-time)))
      (if (eq detector-mode :mode_detected)
          (progn
            (setq fm-ret (send self :get-otd-object-forces-moments))
@@ -705,21 +792,97 @@
      (if (eq detector-mode :mode_detected)
          (car fm-ret))
      ))
+  (:set-object-turnaround-ref-moment
+   (&key (limbs '(:rarm :larm))
+         (axis (float-vector 0 0 1))
+         (max-ref-moment 10)
+         (func)
+         (moment-center)
+         (max-time 4000.0)
+         (detect-time-offset 2000.0)
+         (set-ref-force-time 2000.0)
+         (set-ref-force-p t)
+         (periodic-time 200) ;; [msec]
+         )
+   "Set object turnaround reference force.
+    axis is axis which resultant moment is around.
+    max-time is max time [msec] and max-ref-moment is max reference resultant moment.
+    func is function to distribute estimated resultant moment to hands' forces/moments.
+    moment-center is moment center [mm].
+    detect-time-offset is additional checking time [msec].
+    set-ref-force-time is time to set reference force [msec].
+    If set-ref-force-p is t, set estimated reference force. Otherwise, set reference force to zero.
+    periodic-time is loop wait time[msec]."
+   (format t ";; Start object turnaround detection~%")
+   (let ((all-limbs (sort '(:rleg :lleg :rarm :larm) #'< #'(lambda (x) (position (car (send robot x :force-sensors)) (send robot :force-sensors)))))
+         (fs-list (funcall func max-ref-moment)))
+     (send self :set-object-turnaround-detector-param
+           :axis axis :moment-center (scale 1e-3 moment-center) :detector-total-wrench 1)
+     (send self :set-ref-forces
+           (mapcar #'(lambda (limb)
+                       (if (memq limb '(:rleg :lleg))
+                           (float-vector 0 0 0)
+                         (elt fs-list (position limb limbs))))
+                   all-limbs)
+           max-time)
+     (send self :start-object-turnaround-detection
+           :ref-diff-wrench max-ref-moment
+           :max-time (* 1e-3 (+ detect-time-offset max-time))
+           :limbs limbs)
+     (let ((detector-mode :mode_detector_idle) (fm-ret) (otd-ret-wrenches))
+       (do-until-key-with-check
+        (not (not (memq detector-mode '(:mode_started :mode_detector_idle))))
+        (setq detector-mode (send self :check-object-turnaround-detection))
+        (format t ";;   Detecting... (detector-mode = ~A, current force moment = ~A)~%" detector-mode (send self :get-otd-object-forces-moments))
+        (unix:usleep (* 1000 periodic-time)))
+       (if (eq detector-mode :mode_detected)
+           (progn
+             (Setq otd-ret-wrenches (send self :get-otd-object-forces-moments))
+             (setq fm-ret (caddr otd-ret-wrenches))
+             (format t ";; Detected (force moment = ~A ~A)~%" fm-ret (funcall func (v. axis fm-ret)))
+             (setq fm-ret (funcall func (v. axis fm-ret)))
+             (if set-ref-force-p
+                 (send self :set-ref-forces
+                       (mapcar #'(lambda (limb)
+                                   (if (memq limb '(:rleg :lleg))
+                                       (float-vector 0 0 0)
+                                     (elt fm-ret (position limb limbs))))
+                               all-limbs)
+                       set-ref-force-time)
+               (send self :set-ref-force
+                     (float-vector 0 0 0)
+                     set-ref-force-time
+                     (if (= (length limbs) 1) (car limbs) :arms))))
+         (progn
+           (format t ";; Not detected (~A)~%" detector-mode)
+           (send self :set-ref-force
+                 (float-vector 0 0 0)
+                 set-ref-force-time
+                 (if (= (length limbs) 1) (car limbs) :arms))
+           )
+         )
+       (send self :wait-interpolation-seq)
+       (if (eq detector-mode :mode_detected)
+           otd-ret-wrenches)
+       )))
   )
 
 ;; RemoveForceSensorLinkOffset
 (def-set-get-param-method 'hrpsys_ros_bridge::OpenHRP_RemoveForceSensorLinkOffsetService_ForceMomentOffsetParam
-  :raw-set-forcemoment-offset-param :raw-get-forcemoment-offset-param
+  :raw-set-forcemoment-offset-param :raw-get-forcemoment-offset-param :get-forcemoment-offset-param-arguments
   :removeforcesensorlinkoffsetservice_setforcemomentoffsetparam :removeforcesensorlinkoffsetservice_getforcemomentoffsetparam
   :optional-args (list :name 'name))
 
 (defmethod rtm-ros-robot-interface
   (:zero-set-forcemoment-offset-param
    (limb)
+   "Set RemoveForceSensorLinkOffset's params offset to zero."
    (send self :set-forcemoment-offset-param limb :force-offset #f(0 0 0) :moment-offset #f(0 0 0) :link-offset-centroid #f(0 0 0) :link-offset-mass 0)
    )
   (:set-forcemoment-offset-param
    (limb &rest args)
+   "Set RemoveForceSensorLinkOffset params for given limb.
+    For arguments, please see (send *ri* :get-forcemoment-offset-param-arguments)."
    (send* self :force-sensor-method
          limb
          #'(lambda (name &rest _args)
@@ -728,6 +891,7 @@
          args))
   (:get-forcemoment-offset-param
    (limb)
+   "Get RemoveForceSensorLinkOffset params for given limb."
    (send self :force-sensor-method
          limb
          #'(lambda (name &rest _args)
@@ -735,6 +899,7 @@
          :get-forcemoment-offset-param))
   (:load-forcemoment-offset-param
    (fname &key (set-offset t))
+   "Load RemoveForceSensorLinkOffset params from fname (file path)."
    (mapcar #'(lambda (x)
                (send* self :set-forcemoment-offset-param (car x)
                       (if set-offset
@@ -818,11 +983,11 @@
 ;; AutoBalancerService
 (def-set-get-param-method
   'hrpsys_ros_bridge::Openhrp_AutoBalancerService_GaitGeneratorParam
-  :raw-set-gait-generator-param :get-gait-generator-param
+  :raw-set-gait-generator-param :get-gait-generator-param :get-gait-generator-param-arguments
   :autobalancerservice_setgaitgeneratorparam :autobalancerservice_getgaitgeneratorparam)
 (def-set-get-param-method
   'hrpsys_ros_bridge::Openhrp_AutoBalancerService_AutoBalancerParam
-  :raw-set-auto-balancer-param :get-auto-balancer-param
+  :raw-set-auto-balancer-param :get-auto-balancer-param :get-auto-balancer-param-arguments
   :autobalancerservice_setAutoBalancerparam :autobalancerservice_getAutoBalancerparam)
 
 (defmethod rtm-ros-robot-interface
@@ -835,12 +1000,17 @@
     Otherwise, start auto balancer with legs ik by default."
    (send self :autobalancerservice_startAutoBalancer
          :limbs (mapcar #'(lambda (x) (format nil "~A" (string-downcase x))) limbs)))
-  (:stop-auto-balancer () (send self :autobalancerservice_stopAutoBalancer))
+  (:stop-auto-balancer
+   ()
+   "Stop auto balancer mode"
+   (send self :autobalancerservice_stopAutoBalancer))
   (:go-pos-no-wait
    (xx yy th)
+   "Call goPos without wait."
    (send self :autobalancerservice_goPos :x xx :y yy :th th))
   (:go-pos
    (xx yy th)
+   "Call goPos with wait."
    (send self :go-pos-no-wait xx yy th)
    (send self :wait-foot-steps))
   (:raw-get-foot-step-param
@@ -852,8 +1022,8 @@
    (let ((param (send self :raw-get-foot-step-param)))
      (append
       (mapcan #'(lambda (meth param-name) (list param-name (send self :abc-footstep->eus-footstep (send param meth))))
-              '(:rleg_coords :lleg_coords :support_leg_coords :swing_leg_coords :swing_leg_src_coords :swing_leg_dst_coords :dst_foot_midcoords)
-              '(:rleg-coords :lleg-coords :support-leg-coords :swing-leg-coords :swing-leg-src-coords :swing-leg-dst-coords :dst-foot-midcoords))
+              '(:support_leg_coords :swing_leg_coords :swing_leg_src_coords :swing_leg_dst_coords :dst_foot_midcoords)
+              '(:support-leg-coords :swing-leg-coords :swing-leg-src-coords :swing-leg-dst-coords :dst-foot-midcoords))
       (mapcan #'(lambda (meth param-name)
                   (list param-name (send self :get-idl-enum-values
                                          (send param meth)
@@ -866,7 +1036,7 @@
    "Get AutoBalancer foot step param by given name.
     param-name is key word for parameters defined in IDL.
     param-name should be :rleg-coords :lleg-coords :support-leg-coords :swing-leg-coords :swing-leg-src-coords :swing-leg-dst-coords :dst-foot-midcoords :support-leg :support-leg-with-both."
-   (if (memq param-name '(:rleg-coords :lleg-coords :support-leg-coords :swing-leg-coords :swing-leg-src-coords :swing-leg-dst-coords :dst-foot-midcoords :support-leg :support-leg-with-both))
+   (if (memq param-name '(:support-leg-coords :swing-leg-coords :swing-leg-src-coords :swing-leg-dst-coords :dst-foot-midcoords :support-leg :support-leg-with-both))
        (cadr (memq param-name (send self :get-foot-step-params)))
      (error ";; no such abc footstep param ~A~%" param-name))
    )
@@ -950,6 +1120,7 @@
      ))
   (:set-foot-steps-with-base-height
    (fs av-list time-list)
+   "Set foot steps with sending angle-vector."
    (send self :set-foot-steps-no-wait fs)
    (send self :angle-vector-sequence av-list time-list)
    (send self :wait-interpolation)
@@ -957,6 +1128,7 @@
    )
   (:set-foot-steps-with-param-and-base-height
    (fs-params av-list time-list)
+   "Set foot steps and params with sending angle-vector."
    (send self :set-foot-steps-with-param-no-wait fs-params)
    (send self :angle-vector-sequence av-list time-list)
    (send self :wait-interpolation)
@@ -996,6 +1168,7 @@
      ))
   (:get-current-footstep-index
    ()
+   "Get current footstep index."
    (cadr (send self :get-remaining-foot-step-sequence-current-index)))
   (:get-remaining-foot-step-sequence
    ()
@@ -1021,6 +1194,7 @@
      ))
   (:go-velocity
    (vx vy vth)
+   "Call goVelocity."
    (send self :autobalancerservice_goVelocity :vx vx :vy vy :vth vth))
   (:go-stop
    ()
@@ -1055,6 +1229,8 @@
     &key default-orbit-type
          leg-default-translate-pos ;; [mm]
     &allow-other-keys)
+   "Set gait generator param.
+    For arguments, please see (send *ri* :get-gait-generator-param-arguments)."
    (send* self :raw-set-gait-generator-param
           (append
            (if (memq :default-orbit-type args)
@@ -1073,6 +1249,7 @@
            args)))
   (:print-gait-generator-orbit-type
    ()
+   "Print GaitGenerator orbit types."
    (let ((cs (constants "" "HRPSYS_ROS_BRIDGE::OPENHRP_AUTOBALANCERSERVICE_ORBITTYPE")))
      (mapcar #'(lambda (x) (format t ";; ~A => ~A~%" x (eval x))) cs)
      t))
@@ -1091,14 +1268,18 @@
   ;; :get-auto-balancer-param and :set-auto-balancer-param is not defined by def-set-get-param-method yet.
   (:get-auto-balancer-param
    ()
+   "Get AutoBalancer param."
    (send (send self :autobalancerservice_getautobalancerparam) :i_param))
   (:set-auto-balancer-param
    (&rest args
     &key leg-names
          default-zmp-offsets ;; [mm]
+         graspless-manip-arm
          graspless-manip-reference-trans-pos ;; [mm]
          graspless-manip-reference-trans-rot ;; rotation-matrix
     &allow-other-keys)
+   "Set AutoBalancer param.
+    For arguments, please see (send *ri* :get-auto-balancer-param-arguments)."
    (send* self :raw-set-auto-balancer-param
           (append
            (if (and (memq :leg-names args) leg-names)
@@ -1112,6 +1293,8 @@
                                                                          (make-list (- lnum (length default-zmp-offsets))
                                                                                     :initial-element (float-vector 0 0 0))))))
                  (list :default-zmp-offsets dzo)))
+           (if (and (memq :graspless-manip-arm args) graspless-manip-arm)
+               (list :graspless-manip-arm (string-downcase graspless-manip-arm)))
            (if (and (memq :graspless-manip-reference-trans-pos args) graspless-manip-reference-trans-pos)
                (list :graspless-manip-reference-trans-pos (scale 1e-3 graspless-manip-reference-trans-pos)))
            (if (and (memq :graspless-manip-reference-trans-rot args) graspless-manip-reference-trans-rot)
@@ -1139,6 +1322,7 @@
    )
   (:cmd-vel-mode
    ()
+   "Walk with subscribing /cmd_vel topic."
    (send self :start-cmd-vel-mode)
    (do-until-key
     (send self :go-velocity 0 0 0)
@@ -1163,7 +1347,8 @@
    )
   (:calc-dvel-with-velocity-center-offset
    (ang velocity-center-offset)
-   "ang : [deg], offset vector [mm]"
+   "Calculate velocity params for rotating with given velocity center offset.
+    Ang : [deg], offset vector [mm]"
    (let* ((default-step-time (send (send self :get-gait-generator-param) :default_step_time))
           (cen (make-cascoords :pos velocity-center-offset))
           (cc (make-cascoords)))
@@ -1175,12 +1360,63 @@
         (/ (* 1e-3 (elt (send tf :worldpos) 1)) default-step-time)
         (/ ang default-step-time)
         ))))
+  (:set-default-step-time-with-the-same-swing-time
+   (default-step-time)
+   "Set default step time with the same swing time."
+   (let* ((ggp (send self :get-gait-generator-param))
+          (prev-default-step-time (send ggp :default_step_time))
+          (prev-default-double-support-ratio (send ggp :default_double_support_ratio))
+          (swing-time (* (- 1.0 prev-default-double-support-ratio) prev-default-step-time))
+          (new-default-double-support-ratio (- 1.0 (/ swing-time default-step-time))))
+     (if (>= swing-time default-step-time)
+         (error ";; default step time(~A[s]) should be greater than swing time(~A[s])~%" default-step-time swing-time))
+     (send self :set-gait-generator-param
+           :default-step-time default-step-time
+           :default-double-support-ratio new-default-double-support-ratio)
+     )
+   )
+  (:start-graspless-manip-mode
+   (robot arm)
+   "Start graspless manip mode while walking.
+    robot is robot instance which angle-vector is for graspless manip.
+    arm is used arm (:rarm, :larm, :arms)."
+   (let ((crds (if (eq arm :arms)
+                   (send self :calc-hand-trans-coords-dual-arms robot)
+                 (send self :calc-hand-trans-coords-single-arm robot arm)
+                 )))
+     (send self :set-auto-balancer-param
+           :graspless-manip-arm arm
+           :graspless-manip-mode t :is-hand-fix-mode t
+           :graspless-manip-reference-trans-rot (send crds :worldrot)
+           :graspless-manip-reference-trans-pos (send crds :worldpos)
+           )))
+  (:stop-graspless-manip-mode
+   ()
+   "Stop graspless manip mode while walking."
+   (send self :set-auto-balancer-param :graspless-manip-mode nil))
+  (:calc-hand-trans-coords-dual-arms
+   (robot)
+   "Calculate foot->hand coords transformation for dual-arm graspless manipulation."
+   (let* ((fc (send robot :foot-midcoords))
+          (arm-pos (mapcar #'(lambda (x) (send fc :inverse-transform-vector (send robot x :end-coords :worldpos))) '(:larm :rarm)))
+          (yy (apply #'v- arm-pos)))
+     (setf (elt yy 2) 0)
+     (setq yy (normalize-vector yy))
+     (make-coords :pos (apply #'midpoint 0.5 arm-pos)
+                  :rot (transpose (make-matrix 3 3 (list (v* yy (float-vector 0 0 1))
+                                                         yy
+                                                         (float-vector 0 0 1)))))))
+  (:calc-hand-trans-coords-single-arm
+   (robot arm)
+   "Calculate foot->hand coords transformation for single-arm graspless manipulation."
+   (send (send robot :foot-midcoords) :transformation (send robot arm :end-coords)))
   )
 
 ;; SoftErrorLimiterService
 (defmethod rtm-ros-robot-interface
   (:set-soft-error-limit
     (name limit)
+    "Set SoftErrorLimiter servo error limit [rad] with given name."
     (send self :softerrorlimiterservice_setservoerrorlimit :name name :limit limit)
     )
   )
@@ -1188,17 +1424,17 @@
 ;; StabilizerService
 (def-set-get-param-method
   'hrpsys_ros_bridge::Openhrp_StabilizerService_stParam
-  :raw-set-st-param :get-st-param
+  :raw-set-st-param :get-st-param :get-st-param-arguments
   :stabilizerservice_setparameter :stabilizerservice_getparameter)
 
 (defmethod rtm-ros-robot-interface
   (:set-st-param
    (&rest args
     &key st-algorithm
-         eefm-pos-damping-gain eefm-rot-damping-gain eefm-pos-time-const-support eefm-rot-time-const
+         eefm-pos-damping-gain eefm-rot-damping-gain eefm-pos-time-const-support eefm-rot-time-const eefm-swing-pos-spring-gain eefm-swing-pos-time-const eefm-swing-rot-spring-gain eefm-swing-rot-time-const
     &allow-other-keys)
    "Set Stabilizer parameters.
-    To learn more about arguments, please see (pprint (find-method *ri* :raw-set-st-param))."
+    For arguments, please see (send *ri* :get-st-param-arguments)."
    (unless (send self :get :default-st-param)
      (send self :put :default-st-param (send self :get-st-param)))
    (let ((prm (send self :get-st-param)))
@@ -1228,6 +1464,22 @@
                  (let ((tmp (send prm :eefm_pos_time_const_support)))
                    (setq (tmp . ros::_data) (apply #'concatenate float-vector eefm-pos-time-const-support))
                    (list :eefm-pos-time-const-support tmp)))
+             (if (and (memq :eefm-swing-pos-spring-gain args) eefm-swing-pos-spring-gain)
+                 (let ((tmp (send prm :eefm_swing_pos_spring_gain)))
+                   (setq (tmp . ros::_data) (apply #'concatenate float-vector eefm-swing-pos-spring-gain))
+                   (list :eefm-swing-pos-spring-gain tmp)))
+             (if (and (memq :eefm-swing-pos-time-const args) eefm-swing-pos-time-const)
+                 (let ((tmp (send prm :eefm_swing_pos_time_const)))
+                   (setq (tmp . ros::_data) (apply #'concatenate float-vector eefm-swing-pos-time-const))
+                   (list :eefm-swing-pos-time-const tmp)))
+             (if (and (memq :eefm-swing-rot-spring-gain args) eefm-swing-rot-spring-gain)
+                 (let ((tmp (send prm :eefm_swing_rot_spring_gain)))
+                   (setq (tmp . ros::_data) (apply #'concatenate float-vector eefm-swing-rot-spring-gain))
+                   (list :eefm-swing-rot-spring-gain tmp)))
+             (if (and (memq :eefm-swing-rot-time-const args) eefm-swing-rot-time-const)
+                 (let ((tmp (send prm :eefm_swing_rot_time_const)))
+                   (setq (tmp . ros::_data) (apply #'concatenate float-vector eefm-swing-rot-time-const))
+                   (list :eefm-swing-rot-time-const tmp)))
              args))))
   (:set-st-param-for-non-feedback-LIP-mode
    ()
@@ -1303,7 +1555,7 @@
 ;; KalmanFilterService
 (def-set-get-param-method
   'hrpsys_ros_bridge::Openhrp_KalmanFilterService_KalmanFilterParam
-  :set-kalman-filter-param :get-kalman-filter-param
+  :set-kalman-filter-param :get-kalman-filter-param :get-kalman-filter-param-arguments
   :kalmanfilterservice_setkalmanfilterparam :kalmanfilterservice_getkalmanfilterparam)
 
 (defmethod rtm-ros-robot-interface
@@ -1316,18 +1568,27 @@
 )
 
 ;; EmergencyStopperService
+(def-set-get-param-method
+  'hrpsys_ros_bridge::Openhrp_EmergencyStopperService_EmergencyStopperParam
+  :set-emergency-stopper-param :get-emergency-stopper-param :get-emergency-stopper-param-arguments
+  :emergencystopperservice_setemergencystopperparam :emergencystopperservice_getemergencystopperparam)
+
 (defmethod rtm-ros-robot-interface
   (:emergency-stop-motion
    ()
+   "Stop motion emergently in EmergencyStopper."
    (send self :emergencystopperservice_stopmotion))
   (:hard-emergency-stop-motion
    ()
+   "Stop motion emergently in hard EmergencyStopper."
    (send self :emergencystopperservice_stopmotion :rosbridge-name "/HardEmergencyStopperServiceROSBridge"))
   (:emergency-release-motion
    ()
+   "Release emergency motion stopping in EmergencyStopper."
    (send self :emergencystopperservice_releasemotion))
   (:hard-emergency-release-motion
    ()
+   "Release emergency motion stopping in hard EmergencyStopper."
    (send self :emergencystopperservice_releasemotion :rosbridge-name "/HardEmergencyStopperServiceROSBridge"))
   (:emergency-mode
    ()
@@ -1389,10 +1650,10 @@
                       '(:rleg :lleg))))
    "Start default unstable RTCs controller mode.
     Currently Stabilzier, AutoBalancer, and ImpedanceController are started."
-   (send self :start-st)
+   (send self :start-auto-balancer :limbs abc-limbs)
    (dolist (limb ic-limbs)
      (send self :start-impedance-no-wait limb))
-   (send self :start-auto-balancer :limbs abc-limbs)
+   (send self :start-st)
    (dolist (limb ic-limbs)
      (send self :wait-impedance-controller-transition limb))
    )
@@ -1408,6 +1669,24 @@
      (send self :wait-impedance-controller-transition limb))
    )
 )
+
+;; ReferenceForceUpdater
+(def-set-get-param-method
+  'hrpsys_ros_bridge::Openhrp_ReferenceForceUpdaterService_ReferenceForceUpdaterParam
+  :set-reference-force-updater-param :get-reference-force-updater-param :get-reference-force-updater-param-arguments
+  :ReferenceForceUpdaterService_setReferenceForceUpdaterParam :ReferenceForceUpdaterService_getReferenceForceUpdaterParam)
+(defmethod rtm-ros-robot-interface
+  (:start-reference-force-updater
+   ()
+   "Start reference force updater."
+   (send self :referenceforceupdaterservice_startReferenceforceupdater)
+   )
+  (:stop-reference-force-updater
+   ()
+   "Stop reference force updater."
+   (send self :referenceforceupdaterservice_stopReferenceforceupdater)
+   )
+  )
 
 (defun print-end-effector-parameter-conf-from-robot
   (rb)
@@ -1668,6 +1947,18 @@
                         (if (cadr (memq :root-coords (elt rs-list idx)))
                             (list :zmp (send (cadr (memq :root-coords (elt rs-list idx))) :transform-vector root-local-zmp))
                           (list :root-local-zmp root-local-zmp)))
+                 (incf idx)
+                 )))))
+      ;; optional data
+      (let ((oln) (optfile (concatenate string input-basename ".optionaldata")) (idx 0))
+        (if (probe-file optfile)
+            (with-open-file
+             (of optfile :direction :input)
+             (while (setq oln (read-line of nil))
+               (let* ((dd (subseq (data-str->data-list oln) 1)))
+                 (nconc (elt rs-list idx)
+                        (list :optional-data dd
+                              :contact-state (mapcar #'(lambda (x) (if (eps= x 1.0) :support :swing)) (concatenate cons (subseq dd 0 (/ (length dd) 2))))))
                  (incf idx)
                  )))))
       rs-list)))
