@@ -7,6 +7,7 @@ import sys
 import os
 import time
 import optparse
+import socket
 
 from xml.dom.minidom import parse
 
@@ -89,6 +90,7 @@ def rtconnect(nameserver, tags, tree):
         dest_full_path = path.cmd_path_to_full_path(dest_path)
         if tag.attributes.get("subscription_type") != None:
             sub_type = tag.attributes.get("subscription_type").value
+            sub_type = replace_arg_tag_by_env(sub_type);
             if not sub_type in ['flush','new','periodic']:
                 print >>sys.stderr, sub_type+' is not a subscription type'
                 continue
@@ -109,12 +111,16 @@ def rtconnect(nameserver, tags, tree):
         try:
             sub_type = str(sub_type)
             props = {'dataport.subscription_type': sub_type}
+            if tag.attributes.get("push_policy") != None:
+                push_policy = replace_arg_tag_by_env(str(tag.attributes.get("push_policy").value));
+            else:
+                push_policy = 'all'
             if sub_type == 'new':
-                props['dataport.publisher.push_policy'] = 'all'
+                props['dataport.publisher.push_policy'] = push_policy
             elif sub_type == 'periodic':
-                props['dataport.publisher.push_policy'] = 'all'
+                props['dataport.publisher.push_policy'] = push_policy
                 if tag.attributes.get("push_rate") != None:
-                    props['dataport.push_rate'] = str(tag.attributes.get("push_rate").value)
+                    props['dataport.push_rate'] = replace_arg_tag_by_env(str(tag.attributes.get("push_rate").value))
                 else:
                     props['dataport.push_rate'] = str('50.0')
             options = optparse.Values({'verbose': False, 'id': '', 'name': None, 'properties': props})
@@ -219,10 +225,26 @@ def main():
     else:
         nameserver = os.getenv("RTCTREE_NAMESERVERS")
 
-    print >>sys.stderr, "[rtmlaunch] RTCTREE_NAMESERVERS", nameserver,  os.getenv("RTCTREE_NAMESERVERS")
-    print >>sys.stderr, "[rtmlaunch] SIMULATOR_NAME", os.getenv("SIMULATOR_NAME","Simulator")
+    print >>sys.stderr, "\033[32m[rtmlaunch] RTCTREE_NAMESERVERS", nameserver,  os.getenv("RTCTREE_NAMESERVERS"), "\033[0m"
+    print >>sys.stderr, "\033[32m[rtmlaunch] SIMULATOR_NAME", os.getenv("SIMULATOR_NAME","Simulator"), "\033[0m"
 
-    tree = rtctree.tree.RTCTree()
+    try:
+        tree = rtctree.tree.RTCTree()
+    except Exception, e:
+        print >>sys.stderr, "\033[31m[rtmlaunch] Could not start rtmlaunch.py, Caught exception (", e, ")\033[0m"
+        # check if host is connected
+        try:
+            hostname = nameserver.split(':')[0]
+            ip_address = socket.gethostbyname(hostname)
+        except Exception, e:
+            print >>sys.stderr, "\033[31m[rtmlaunch] .. Could not find IP address of ", hostname, ", Caught exception (", e, ")\033[0m"
+            print >>sys.stderr, "\033[31m[rtmlaunch] .. Please check /etc/hosts or DNS setup\033[0m"
+            return 1
+        # in this case, it is likely you forget to run name serveer
+        print >>sys.stderr, "\033[31m[rtmlaunch] .. Could not connect to NameServer at ", nameserver, ", Caught exception (", e, ")\033[0m"
+        print >>sys.stderr, "\033[31m[rtmlaunch] .. Please make sure that you have NameServer running at %s/`\033[0m"%(nameserver)
+        print >>sys.stderr, "\033[31m[rtmlaunch] .. You can check with `rtls %s/`\033[0m"%(nameserver)
+        return 1
     while 1:
         print >>sys.stderr, "[rtmlaunch] check connection/activation"
         rtconnect(nameserver, parser.getElementsByTagName("rtconnect"), tree)
