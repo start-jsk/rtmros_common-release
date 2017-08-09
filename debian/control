@@ -1,0 +1,12 @@
+Source: ros-kinetic-rtmros-common
+Section: misc
+Priority: extra
+Maintainer: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
+Build-Depends: debhelper (>= 9.0.0), ros-kinetic-catkin
+Homepage: http://wiki.ros.org/rtmros_common
+Standards-Version: 3.9.2
+
+Package: ros-kinetic-rtmros-common
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-kinetic-hrpsys-ros-bridge, ros-kinetic-hrpsys-tools, ros-kinetic-openrtm-ros-bridge, ros-kinetic-openrtm-tools, ros-kinetic-rosnode-rtc, ros-kinetic-rtmbuild
+Description: A package suite that provides all the capabilities for the ROS users to connect to the robots that run on RT Middleware or RTM-based controllers.
