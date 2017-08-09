@@ -1,0 +1,12 @@
+Source: ros-kinetic-rtmbuild
+Section: misc
+Priority: extra
+Maintainer: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
+Build-Depends: debhelper (>= 9.0.0), libomniorb4-dev, omniidl, omniorb, omniorb-idl, omniorb-nameserver, pkg-config, ros-kinetic-catkin, ros-kinetic-cmake-modules, ros-kinetic-message-generation, ros-kinetic-openrtm-aist, ros-kinetic-openrtm-aist-python, ros-kinetic-rostest, ros-kinetic-std-msgs
+Homepage: http://ros.org/wiki/rtmbuild
+Standards-Version: 3.9.2
+
+Package: ros-kinetic-rtmbuild
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libblas-dev, liblapack-dev, libomniorb4-dev, omniidl, omniorb, omniorb-idl, omniorb-nameserver, pkg-config, ros-kinetic-cmake-modules, ros-kinetic-message-generation, ros-kinetic-message-runtime, ros-kinetic-openrtm-aist, ros-kinetic-openrtm-aist-python, ros-kinetic-rostest, ros-kinetic-std-msgs
+Description: Build scripts for OpenRTM and OpenHRP
