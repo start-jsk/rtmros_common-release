@@ -130,26 +130,29 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridgeImpl::onInitialize()
     }
   }
 
+  // Force Sensor Settings
   coil::vstring virtual_force_sensor = coil::split(prop["virtual_force_sensor"], ",");
-  int npforce = body->numSensors(hrp::Sensor::FORCE) * 2; // forces + absolute forces
+  int npforce = body->numSensors(hrp::Sensor::FORCE);
   int nvforce = virtual_force_sensor.size()/10;
   int nforce  = npforce + nvforce;
   m_rsforce.resize(nforce);
   m_rsforceIn.resize(nforce);
-  m_mcforce.resize(npforce/2+nvforce);
-  m_mcforceIn.resize(npforce/2+nvforce);
-  for (unsigned int i=0; i<npforce/2; i++){
+  m_offforce.resize(nforce);
+  m_offforceIn.resize(nforce);
+  m_mcforce.resize(nforce);
+  m_mcforceIn.resize(nforce);
+  for (unsigned int i=0; i<npforce; i++){
     hrp::Sensor *s = body->sensor(hrp::Sensor::FORCE, i);
     // force and moment
-    m_rsforceIn[i*2] = new InPort<TimedDoubleSeq>(s->name.c_str(), m_rsforce[i*2]);
-    m_rsforce[i*2].data.length(6);
-    registerInPort(s->name.c_str(), *m_rsforceIn[i*2]);
+    m_rsforceIn[i] = new InPort<TimedDoubleSeq>(s->name.c_str(), m_rsforce[i]);
+    m_rsforce[i].data.length(6);
+    registerInPort(s->name.c_str(), *m_rsforceIn[i]);
     m_rsforceName.push_back(s->name);
     // off force and moment
-    m_rsforceIn[i*2+1] = new InPort<TimedDoubleSeq>(std::string("off_" + s->name).c_str(), m_rsforce[i*2+1]);
-    m_rsforce[i*2+1].data.length(6);
-    registerInPort(s->name.c_str(), *m_rsforceIn[i*2+1]);
-    m_rsforceName.push_back(std::string("off_" + s->name));
+    m_offforceIn[i] = new InPort<TimedDoubleSeq>(std::string("off_" + s->name).c_str(), m_offforce[i]);
+    m_offforce[i].data.length(6);
+    registerInPort(s->name.c_str(), *m_offforceIn[i]);
+    m_offforceName.push_back(std::string("off_" + s->name));
     // ref force and moment
     m_mcforceIn[i] = new InPort<TimedDoubleSeq>(std::string("ref_" + s->name).c_str(), m_mcforce[i]);
     m_mcforce[i].data.length(6);
@@ -158,9 +161,16 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridgeImpl::onInitialize()
     std::cerr << i << " physical force sensor : " << s->name << std::endl;
   }
 
+  // Sensor Settings
   for (int j = 0 ; j < body->numSensorTypes(); j++) {
     for (int i = 0 ; i < body->numSensors(j); i++) {
       hrp::Sensor* sensor = body->sensor(j, i);
+      if (! sensor ) {
+        std::cerr << "ERROR : Unknown sensor (type : " << j << ", id : " << i << ")" << std::endl;
+        std::cerr << "ERROR : Please make sure that each sensor type start from 0 sensorId" << std::endl;
+        std::cerr << "ERROR : THIS WILL CAUSE SEVERE PROBLEM, PLEASE FIX YOUR MODEL FILE " << std::endl;
+        continue;
+      }
       SensorInfo si;
       si.transform.setOrigin( tf::Vector3(sensor->localPos(0), sensor->localPos(1), sensor->localPos(2)) );
       hrp::Vector3 rpy;
@@ -197,6 +207,7 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridgeImpl::onInitialize()
     }
   }
 
+  // Virtual Force Sensor Settings
   for(unsigned int j = 0, i = npforce; j < nvforce; j++, i++ ){
     std::string name = virtual_force_sensor[j*10+0];
     std::string base = virtual_force_sensor[j*10+1];
@@ -210,11 +221,15 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridgeImpl::onInitialize()
     m_rsforce[i].data.length(6);
     registerInPort(name.c_str(), *m_rsforceIn[i]);
     m_rsforceName.push_back(name);
+    // off force and moment
+    m_offforceIn[i] = new InPort<TimedDoubleSeq>(std::string("off_" + name).c_str(), m_offforce[i]);
+    m_offforce[i].data.length(6);
+    registerInPort(name.c_str(), *m_offforceIn[i]);
+    m_offforceName.push_back(std::string("off_" + name));
     // reference virtual force and moment
-    unsigned int j2 = j+npforce/2;
-    m_mcforceIn[j2] = new InPort<TimedDoubleSeq>(std::string("ref_"+name).c_str(), m_mcforce[j2]);
-    m_mcforce[j2].data.length(6);
-    registerInPort(std::string("ref_"+name).c_str(), *m_mcforceIn[j2]);
+    m_mcforceIn[i] = new InPort<TimedDoubleSeq>(std::string("ref_"+name).c_str(), m_mcforce[i]);
+    m_mcforce[i].data.length(6);
+    registerInPort(std::string("ref_"+name).c_str(), *m_mcforceIn[i]);
     m_mcforceName.push_back(std::string("ref_"+name).c_str());
 
 	if ( ! body->link(base) ) {
@@ -306,9 +321,10 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridgeImpl::onInitialize()
         if ( sensor ) {
           // real force sensor
           sensor_link_name = sensor->link->name;
-        } else if (sensor_info.find(sensor_name) !=  sensor_info.end()) {
+        } else if (sensor_info.find(tmpname) !=  sensor_info.end()) {
           // virtual force sensor
-          sensor_link_name =  sensor_info[sensor_name].link_name;
+          sensor_link_name = sensor_info[tmpname].link_name;
+          sensor_link_name = sensor_link_name.substr(0, sensor_link_name.size()-5); // such that LLEG_JOINT0_LINK -> LLEG_JOINT0
         } else {
           std::cerr << "[" << m_profile.instance_name << "]   unknown force param" << std::endl;
           continue;
