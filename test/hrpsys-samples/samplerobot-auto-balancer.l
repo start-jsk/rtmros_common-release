@@ -183,6 +183,9 @@
     (send *ri* :go-velocity 0.1 0 0)
     (unix:sleep 1)
     (send *ri* :go-stop)
+    ;; stride-parameter
+    (send *ri* :set-gait-generator-param :stride-parameter #f(0.15 0.05 10 0.05))
+    (send *ri* :set-gait-generator-param :stride-parameter #f(0.15 0.05 10 0.05 0.025 5))
     (send *ri* :set-gait-generator-param
           :default-step-time (send org-gp :default_step_time)
           :default-step-height (send org-gp :default_step_height)
@@ -510,6 +513,15 @@
       (send *ri* :wait-interpolation)
       )))
 
+(defun samplerobot-auto-balancer-demo23 ()
+  (print ";; 18. Get footsteps of go-pos")
+  (let* ((goalx 0.3) (goaly 0.15) (goalth 60)
+         (fsll (send *ri* :get-go-pos-footsteps-sequence goalx goaly goalth)))
+    (pprint fsll)
+    (print ";; Execute this footsteps")
+    (send *ri* :set-foot-steps fsll)
+    ))
+
 (defun demo-reset-standing-pos ()
   (send *ri* :go-pos 0 0 -45)
   (send *ri* :go-pos 0 -1.0 0)))
@@ -544,6 +556,7 @@
   (samplerobot-auto-balancer-demo20 :reset-standing-pos t)
   (samplerobot-auto-balancer-demo21)
   (samplerobot-auto-balancer-demo22)
+  (samplerobot-auto-balancer-demo23)
   )
 
 (warn ";; (samplerobot-auto-balancer-demo)~%")
