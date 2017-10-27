@@ -1,0 +1,213 @@
+ros-indigo-openrtm-tools (1.4.1-0trusty) trusty; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Wed, 25 Oct 2017 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.4.0-0trusty) trusty; urgency=high
+
+  * fix code to run both Indido and Kinetic (#1025 <https://github.com/start-jsk/rtmros_common/issues/1025>)
+    * add retry=3 to openrtm_tools/test/test-rtmlaunch.test
+  * Contributors: Kei Okada
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Wed, 09 Aug 2017 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.3.3-0trusty) trusty; urgency=high
+
+  * [hrpsys_ros_bridge/launch/hrpsys_ros_bridge.launch, openrtm_tools/src/openrtm_tools/rtmlaunch.py] Add argument to change buffer length of rtmlaunch connection. Set 8 by default (default setting in openrtm). (#980 <https://github.com/start-jsk/rtmros_common/issues/980>)
+  * re-enable rosnode_rtc (#961 <https://github.com/start-jsk/rtmros_common/issues/961>)
+    * openrtm_tools: find_package openrtm_aist for DEPENDS section in catkin_package
+  * Contributors: Kei Okada, Shunichi Nozawa
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 12 Feb 2017 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.3.2-0trusty) trusty; urgency=high
+
+  * [fix ] Revert "workaround for ros-groovy-rqt-top installs wrong(?) psutil" (#938)  This reverts commit 94975a81eadbf251a85b2fd3c77137b1f96f248b. This closes #936 <https://github.com/start-jsk/rtmros_common/issues/936>
+  * [refactor] add more mesage to prevent confusion
+  * [refactor] remove old rosbuild files
+  * [feat] Enable to set push_policy and push_rate for DataPorts from hrpsys_ros_bridge.launch argument. Use all and 50.0 by default to keep backward compatibility.
+  * [feat] Enable to set subscription_type for DataPorts from hrpsys_ros_bridge.launch argument. Use new by default to keep backward compatibility.
+  * Contributors: Shunichi Nozawa, Kei Okada, Iori Yanokura
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 26 Apr 2016 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.3.1-0trusty) trusty; urgency=high
+
+  * deb release only targeting to indigo
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Wed, 16 Dec 2015 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.3.0-0trusty) trusty; urgency=high
+
+  * deb release only targeting to indigo
+  * [src/openrtm_tools/rtmlaunch.py] check rtc connection once in rtmlaunch.py when "RTC_CONNECTION_CHECK_ONCE" env is set #834 <https://github.com/start-jsk/rtmros_common/pull/835>
+  * [src/openrtm_tools/rtmlaunch.py] update tree to reflesh current status
+  * Contributors: Kei Okada, Masaki Murooka
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Wed, 09 Dec 2015 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.2.14-0trusty) trusty; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 23 Jun 2015 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.2.13-0trusty) trusty; urgency=high
+
+  * [src/openrtm_tools/rtmlaunch.py] keep one RTCTree() instance and reflesh when needed, to speedup
+  * Contributors: Kei Okada
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Thu, 11 Jun 2015 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.2.12-0trusty) trusty; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Mon, 27 Apr 2015 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.2.11-0trusty) trusty; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sat, 25 Apr 2015 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.2.10-0trusty) trusty; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Fri, 24 Apr 2015 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.2.9-0trusty) trusty; urgency=high
+
+  * [openrtm_tools/scripts/rtshell-setup.sh] modify rtmlaunch alias
+  * [openrtm_tools/rtmlaunch.py] disable execute bit and remove __main__, we have script/rtmluanch.py for this purpose
+  * [src/openrtm_tools/rtmlaunch.py] forget to import signal
+  * [openrtm_tools/scripts/rtmluanch.py] forget to import sys
+  * [openrtm_tools] create openrtm example program under openrtm_examles to use rosrun command in test code
+  * move rtmlaunch/rtmtest from hrpsys_ros_bridge to openrtm_tools, add envhook for catkin users
+  * Contributors: Kei Okada, Kunio Kojima
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sat, 11 Apr 2015 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.2.8-0trusty) trusty; urgency=high
+
+  * [test-*.py] test name could not contain minus? any changet to underscore (http://answers.ros.org/question/197377/rostest-not-finding-the-actual-test/)
+  * [FIXME][rtshell-setup.sh] source bash_completion, since shell_suport is not working for now
+  * search rtshell path from CMAKE_PREFIX_PATH
+  * [openrtm_tools] rtshell-setup.sh: fix shell_support location
+  * Contributors: Kei Okada
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Mon, 09 Mar 2015 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.2.7-0trusty) trusty; urgency=high
+
+  * remove openrtm_aist_python and rtshell from find_package
+  * Hide print debug message of replacing of arg tag
+  * Add function to replace arg tag by env. SIMULATOR_NAME is replaced by default.
+  * Contributors: Kei Okada, Shunichi Nozawa
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 06 Jan 2015 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.2.6-0trusty) trusty; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Fri, 10 Oct 2014 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.2.5-0trusty) trusty; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sat, 04 Oct 2014 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.2.4-0trusty) trusty; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Mon, 08 Sep 2014 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.2.3-0trusty) trusty; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Wed, 03 Sep 2014 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.2.2-0trusty) trusty; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Sun, 31 Aug 2014 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.2.1-0trusty) trusty; urgency=high
+
+  * (rtmlaunch.py) rtmlaunch should support unless attribute in group tag. the current implementation only takes into account if attribute of group tag. this commit adds supporting unless attribute.
+  * (package.xml files) Update repository URLs
+  * Contributors: Isaac Isao Saito, Ryohei Ueda
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Mon, 23 Jun 2014 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.2.0-0trusty) trusty; urgency=high
+
+  * bump to 1.2.0for hrpsys 315.2.0
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Wed, 14 May 2014 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.0.12-0trusty) trusty; urgency=high
+
+  * Merge pull request #404 from k-okada/403_check_rtprint
+    add add check to rtprint
+  * add python path to openrtm_aist_python, this will fix #403
+  * add test program for rtshell/rtprint
+  * remove redundant rosdep name from manifest.xml
+  * does not call shopt on zsh
+  * Contributors: Kei Okada, Ryohei Ueda
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 06 May 2014 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.0.11-0trusty) trusty; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Wed, 16 Apr 2014 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.0.10-0trusty) trusty; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Tue, 15 Apr 2014 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.0.9-0trusty) trusty; urgency=high
+
+
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Mon, 14 Apr 2014 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.0.8-0trusty) trusty; urgency=high
+
+  * use start_omninames.sh for rosdevel build environment, see #400 <https://github.com/start-jsk/rtmros_common/issues/400>
+  * Contributors: Kei Okada
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Mon, 14 Apr 2014 00:00:00 -0000
+
+ros-indigo-openrtm-tools (1.0.7-0trusty) trusty; urgency=high
+
+  * (rtmlaunch.py) trap SIGINT and exits with 0
+  * openrtm_tools: add rosbash to depends
+  * openrtm_tools : add test code to check if rtmlaunch works
+  * comment out import OpenRTM_aist.RTM_IDL # for catkin, see #375
+  * openrtm_tools: add rosbash to depends
+  * openrtm_tools : add test code to check if rtmlaunch works test-rtmlaunch.{py,test}
+  * comment out import OpenRTM_aist.RTM_IDL # for catkin, see #375
+  * display output when test fails
+  * fix PATH/PYTHONPATH for rosbuild/catkin
+  * add test code for openrtm_tools (rtshell-setup.sh)
+  * fix rtshell-setup.sh to support catkin environment
+  * add link to more useful information, suggested by Isaac
+  * remove debug code
+  * display more verbose information of weird connection error
+  * add rosdep hrpsys/openrtm_aist to fake rosdep
+
+ -- Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>  Thu, 20 Mar 2014 00:00:00 -0000
+
+
