@@ -1,3 +1,33 @@
+## rtmros_common (kinetic) - 1.4.2-0
+
+The packages in the `rtmros_common` repository were released into the `kinetic` distro by running `/usr/bin/bloom-release rtmros_common --track kinetic --rosdistro kinetic` on `Fri, 22 Dec 2017 04:23:20 -0000`
+
+These packages were released:
+- `hrpsys_ros_bridge`
+- `hrpsys_tools`
+- `openrtm_ros_bridge`
+- `openrtm_tools`
+- `rosnode_rtc`
+- `rtmbuild`
+- `rtmros_common`
+
+Version of package(s) in repository `rtmros_common`:
+
+- upstream repository: https://github.com/start-jsk/rtmros_common.git
+- release repository: https://github.com/tork-a/rtmros_common-release.git
+- rosdistro version: `1.4.0-1`
+- old version: `1.4.0-1`
+- new version: `1.4.2-0`
+
+Versions of tools used:
+
+- bloom version: `0.6.1`
+- catkin_pkg version: `0.3.9`
+- rosdep version: `0.11.8`
+- rosdistro version: `0.6.3`
+- vcstools version: `0.1.39`
+
+
 ## rtmros_common (indigo) - 1.4.2-0
 
 The packages in the `rtmros_common` repository were released into the `indigo` distro by running `/usr/bin/bloom-release rtmros_common --track indigo --rosdistro indigo` on `Fri, 22 Dec 2017 03:44:24 -0000`
