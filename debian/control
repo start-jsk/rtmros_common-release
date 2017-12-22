@@ -1,0 +1,12 @@
+Source: ros-kinetic-hrpsys-tools
+Section: misc
+Priority: extra
+Maintainer: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
+Build-Depends: debhelper (>= 9.0.0), ros-kinetic-catkin, ros-kinetic-hrpsys, ros-kinetic-rostest
+Homepage: http://ros.org/wiki/hrpsys_tools
+Standards-Version: 3.9.2
+
+Package: ros-kinetic-hrpsys-tools
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-kinetic-hrpsys, ros-kinetic-openrtm-tools
+Description: The hrpsys_tools package
