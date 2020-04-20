@@ -1,0 +1,13 @@
+Source: ros-melodic-openrtm-ros-bridge
+Section: misc
+Priority: optional
+Maintainer: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
+Build-Depends: debhelper (>= 9.0.0), ros-melodic-catkin, ros-melodic-message-generation, ros-melodic-openrtm-tools, ros-melodic-roscpp, ros-melodic-rostest, ros-melodic-rtmbuild, ros-melodic-std-msgs
+Homepage: http://wiki.ros.org/openrtm_ros_bridge
+Standards-Version: 3.9.2
+
+Package: ros-melodic-openrtm-ros-bridge
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-melodic-openrtm-tools, ros-melodic-roscpp, ros-melodic-std-msgs
+Description: openrtm_ros_bridge package provides basic functionalities to bind two robotics framework: OpenRTM and ROS.
+ By using this package, you can write your ROS packages that communicate with your non-ROS robots that run on OpenRTM. For communicating with the robots that run on hrpsys, you can use hrpsys_ros_bridge package.
