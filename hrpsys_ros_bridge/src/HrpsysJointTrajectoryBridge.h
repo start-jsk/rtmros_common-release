@@ -102,6 +102,7 @@ public:
     std::string groupname;
     std::vector<std::string> joint_list;
     bool interpolationp;
+    ros::Time traj_start_tm;
 
   public:
     typedef boost::shared_ptr<jointTrajectoryActionObj> Ptr;
@@ -125,6 +126,8 @@ public:
 protected:
   RTC::CorbaPort m_SequencePlayerServicePort;
   RTC::CorbaConsumer<OpenHRP::SequencePlayerService> m_service0;
+
+  std::string hrpsys_version;
 
 protected:
   hrp::BodyPtr body;

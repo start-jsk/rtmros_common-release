@@ -206,7 +206,7 @@ void HrpsysSeqStateROSBridge::onJointTrajectory(trajectory_msgs::JointTrajectory
       duration[i] =  trajectory.points[i].time_from_start.toSec() - trajectory.points[i-1].time_from_start.toSec();
     } else { // if i == 0
       duration[i] = trajectory.points[i].time_from_start.toSec();
-      if ( abs(duration[i]) < 0.001 ) duration[i] = 0.001; // set delta ... https://github.com/start-jsk/rtmros_common/issues/1036
+      if ( std::abs(duration[i]) < 0.001 ) duration[i] = 0.001; // set delta ... https://github.com/start-jsk/rtmros_common/issues/1036
     }
   }
 
@@ -215,9 +215,15 @@ void HrpsysSeqStateROSBridge::onJointTrajectory(trajectory_msgs::JointTrajectory
   if ( duration.length() == 1 ) {
     m_service0->setJointAngles(angles[0], duration[0]);
   } else {
-    OpenHRP::dSequenceSequence rpy, zmp;
-    m_service0->playPattern(angles, rpy, zmp, duration);
+    // hrpsys < 315.5.0 does not have clearJointAngles, so need to use old API
+    if (LessThanVersion(hrpsys_version, std::string("315.5.0"))) {
+      OpenHRP::dSequenceSequence rpy, zmp;
+      m_service0->playPattern(angles, rpy, zmp, duration);
+    } else {
+      m_service0->setJointAnglesSequence(angles, duration);
+    }
   }
+  traj_start_tm = ros::Time::now();
 
   interpolationp = true;
 }
@@ -238,11 +244,31 @@ void HrpsysSeqStateROSBridge::onFollowJointTrajectoryActionGoal() {
 #ifdef USE_PR2_CONTROLLERS_MSGS
 void HrpsysSeqStateROSBridge::onJointTrajectoryActionPreempt() {
   joint_trajectory_server.setPreempted();
+  if (!joint_trajectory_server.isNewGoalAvailable()) {
+    // Cancel request comes from client, so motion should be stopped immediately,
+    // while motion should be changed smoothly when new goal comes.
+    // hrpsys < 315.5.0 does not have clearJointAngles, so need to use old API
+    if (LessThanVersion(hrpsys_version, std::string("315.5.0"))) {
+      m_service0->clear();
+    } else {
+      m_service0->clearJointAngles();
+    }
+  }
 }
 #endif
 
 void HrpsysSeqStateROSBridge::onFollowJointTrajectoryActionPreempt() {
   follow_joint_trajectory_server.setPreempted();
+  if (!follow_joint_trajectory_server.isNewGoalAvailable()) {
+    // Cancel request comes from client, so motion should be stopped immediately,
+    // while motion should be changed smoothly when new goal comes.
+    // hrpsys < 315.5.0 does not have clearJointAngles, so need to use old API
+    if (LessThanVersion(hrpsys_version, std::string("315.5.0"))) {
+      m_service0->clear();
+    } else {
+      m_service0->clearJointAngles();
+    }
+  }
 }
 
 void HrpsysSeqStateROSBridge::onTrajectoryCommandCB(const trajectory_msgs::JointTrajectoryConstPtr& msg) {
@@ -442,6 +468,9 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridge::onExecute(RTC::UniqueId ec_id)
         //joint_state.velocity
         //joint_state.effort
         follow_joint_trajectory_feedback.joint_names.push_back(j->name);
+        follow_joint_trajectory_feedback.desired.time_from_start = tm_on_execute - traj_start_tm;
+        follow_joint_trajectory_feedback.actual.time_from_start = tm_on_execute - traj_start_tm;
+        follow_joint_trajectory_feedback.error.time_from_start = tm_on_execute - traj_start_tm;
         follow_joint_trajectory_feedback.desired.positions.push_back(j->q);
         follow_joint_trajectory_feedback.actual.positions.push_back(j->q);
         follow_joint_trajectory_feedback.error.positions.push_back(0);
@@ -463,8 +492,16 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridge::onExecute(RTC::UniqueId ec_id)
         joint_state.velocity.push_back(m_rsvel.data[i]);
       }
     } else {
-      joint_state.velocity.resize(joint_state.name.size());
+      double time_from_prev = (joint_state.header.stamp - prev_joint_state.header.stamp).toSec();
+      if(time_from_prev > 0 && prev_joint_state.position.size() == joint_state.position.size()) {
+        for (unsigned int i = 0; i < joint_state.position.size(); i++) {
+          joint_state.velocity.push_back((joint_state.position[i] - prev_joint_state.position[i]) / time_from_prev);
+        }
+      } else {
+        joint_state.velocity.resize(joint_state.name.size());
+      }
     }
+    prev_joint_state = joint_state;
     // set effort if m_rstorque is available
     if (m_rstorque.data.length() == body->joints().size()) {
       for ( unsigned int i = 0; i < body->joints().size() ; i++ ){
@@ -574,7 +611,8 @@ RTC::ReturnCode_t HrpsysSeqStateROSBridge::onExecute(RTC::UniqueId ec_id)
     }
     if ( !follow_joint_trajectory_feedback.joint_names.empty() &&
          !follow_joint_trajectory_feedback.actual.positions.empty() &&
-         follow_action_initialized ) {
+         follow_action_initialized &&
+         follow_joint_trajectory_server.isActive() ) {
       follow_joint_trajectory_server.publishFeedback(follow_joint_trajectory_feedback);
     }
   } // end: m_mcangleIn

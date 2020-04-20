@@ -4,6 +4,7 @@ PKG = 'hrpsys_ros_bridge'
 NAME = 'test_samplerobot'
 
 import argparse,unittest,rostest, time, sys, math, os
+from copy import deepcopy
 from numpy import *
 
 import rospy,rospkg, tf
@@ -22,6 +23,7 @@ class TestSampleRobot(unittest.TestCase):
     rfsensor = None
     odom = None
     joint_states = None
+    feedback = None
 
     def lfsensor_cb(self, sensor):
         self.lfsensor = sensor
@@ -90,6 +92,9 @@ class TestSampleRobot(unittest.TestCase):
             self.assertAlmostEqual(t2-t1, 11, delta=2)
             #self.assertNotAlmostEqual(trans[1],0,2)
 
+    def feedback_cb(self, msg):
+        self.feedback = msg
+
     def impl_test_joint_angles(self, larm, goal):
         larm.wait_for_server()
 
@@ -111,12 +116,44 @@ class TestSampleRobot(unittest.TestCase):
         point.positions = [ x * math.pi / 180.0 for x in [30,30,30,-90,-40,-30] ]
         point.time_from_start = rospy.Duration(5.0)
         goal.trajectory.points.append(point)
-        larm.send_goal(goal)
+        larm.send_goal(goal, feedback_cb = self.feedback_cb)
+        rospy.sleep(2.5)
+        mid_feedback = deepcopy(self.feedback)
         larm.wait_for_result()
         (trans2,rot2) = self.listener.lookupTransform('/WAIST_LINK0', '/LARM_LINK7', rospy.Time(0))
         rospy.logwarn("tf_echo /WAIST_LINK0 /LARM_LINK7 %r %r"%(trans2,rot2))
         rospy.logwarn("difference between two /LARM_LINK7 %r %r"%(array(trans1)-array(trans2),linalg.norm(array(trans1)-array(trans2))))
         self.assertNotAlmostEqual(linalg.norm(array(trans1)-array(trans2)), 0, delta=0.1)
+        # time_from_start in feedback should have a meaning
+        # https://github.com/jsk-ros-pkg/jsk_pr2eus/issues/233#issuecomment-403416846
+        # JointTrajectoryAction in pr2_controllers_msgs has empty feedback
+        if hasattr(mid_feedback, 'desired'):
+            rospy.logwarn("time_from_start of desired of midpoint feedback: %r"%mid_feedback.desired.time_from_start.to_sec())
+            self.assertAlmostEqual(mid_feedback.desired.time_from_start.to_sec(), 2.5, delta=1)
+            rospy.logwarn("time_from_start of actual of midpoint feedback: %r"%mid_feedback.actual.time_from_start.to_sec())
+            self.assertAlmostEqual(mid_feedback.actual.time_from_start.to_sec(), 2.5, delta=1)
+            rospy.logwarn("time_from_start of error of midpoint feedback: %r"%mid_feedback.error.time_from_start.to_sec())
+            self.assertAlmostEqual(mid_feedback.error.time_from_start.to_sec(), 2.5, delta=1)
+        # feedback shouldn't be published after motion finishes
+        # https://github.com/start-jsk/rtmros_common/pull/1049#issuecomment-403780615
+        fb_id1 = id(self.feedback)
+        rospy.sleep(0.5)
+        fb_id2 = id(self.feedback)
+        rospy.logwarn("object id of feedback after motion: %r, 0.5sec after: %r"%(fb_id1, fb_id2))
+        self.assertEqual(fb_id1, fb_id2)
+
+        ## move less than 1.0 sec
+        goal.trajectory.header.stamp = rospy.get_rostime()
+        point = JointTrajectoryPoint()
+        point.positions = [ x * math.pi / 180.0 for x in [30,30,30, 0,-40,-30] ]
+        point.time_from_start = rospy.Duration(0.9)
+        goal.trajectory.points = [point]
+        larm.send_goal(goal)
+        start_time = rospy.get_rostime()
+        larm.wait_for_result()
+        stop_time  = rospy.get_rostime()
+        rospy.logwarn("working time: %f"%(stop_time - start_time).to_sec())
+        self.assertNotAlmostEqual((stop_time - start_time).to_sec(), 0, delta=0.1)
 
     # send joint angles
     def test_joint_angles(self):
@@ -210,6 +247,196 @@ class TestSampleRobot(unittest.TestCase):
         rospy.logwarn(goal_angles)
         rospy.logwarn("difference between two angles %r %r"%(array([30,30,30,-90,-40,-30])-array(goal_angles),linalg.norm(array([30,30,30,-90,-40,-30])-array(goal_angles))))
         self.assertAlmostEqual(linalg.norm(array([30,30,30,-90,-40,-30])-array(goal_angles)), 0, delta=0.1)
+
+    # https://github.com/start-jsk/rtmros_common/pull/765#issuecomment-120208947
+    def test_jta_cancel_goal(self):
+        # for < kinetic
+        if os.environ['ROS_DISTRO'] >= 'kinetic' :
+            return True
+        from pr2_controllers_msgs.msg import JointTrajectoryAction, JointTrajectoryGoal
+        larm = actionlib.SimpleActionClient("/larm_controller/joint_trajectory_action", JointTrajectoryAction)
+        self.impl_test_jta_cancel_goal(larm, JointTrajectoryGoal())
+
+    def test_fjta_cancel_goal(self):
+        # for >= kinetic
+        if os.environ['ROS_DISTRO'] < 'kinetic' :
+            return True
+        from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
+        larm = actionlib.SimpleActionClient("/larm_controller/follow_joint_trajectory_action", FollowJointTrajectoryAction)
+        self.impl_test_jta_cancel_goal(larm, FollowJointTrajectoryGoal())
+
+    def impl_test_jta_cancel_goal(self, larm, goal):
+        larm.wait_for_server()
+
+        # initialize
+        goal.trajectory.header.stamp = rospy.get_rostime()
+        goal.trajectory.joint_names = ["LARM_SHOULDER_P","LARM_SHOULDER_R","LARM_SHOULDER_Y","LARM_ELBOW","LARM_WRIST_Y","LARM_WRIST_P"]
+        point = JointTrajectoryPoint()
+        point.positions = [0,0,0,0,0,0]
+        point.time_from_start = rospy.Duration(5.0)
+        goal.trajectory.points.append(point)
+        larm.send_goal(goal)
+        larm.wait_for_result()
+
+        try:
+            self.listener.waitForTransform('/WAIST_LINK0', '/LARM_LINK7', rospy.Time(), rospy.Duration(120))
+        except tf.Exception:
+            self.assertTrue(None, "could not found tf from /WAIST_LINK0 to /LARM_LINK7")
+
+        point1 = JointTrajectoryPoint()
+        point2 = JointTrajectoryPoint()
+        # cancel one point trajectory (:angle-vector)
+        point1.positions = [ x * math.pi / 180.0 for x in [20,20,20,20,20,20] ]
+        point1.time_from_start = rospy.Duration(5.0)
+        self.jta_cancel_goal_template(larm, goal, [point1])
+
+        # cancel two points trajectory (:angle-vector-sequence)
+        point1.positions = [ x * math.pi / 180.0 for x in [10,10,10,10,10,10] ]
+        point1.time_from_start = rospy.Duration(2.5)
+        point2.positions = [ x * math.pi / 180.0 for x in [20,20,20,20,20,20] ]
+        point2.time_from_start = rospy.Duration(5.0)
+        self.jta_cancel_goal_template(larm, goal, [point1, point2])
+
+    def jta_cancel_goal_template(self, larm, goal, points):
+        goal.trajectory.header.stamp = rospy.get_rostime()
+        goal.trajectory.points = points
+        larm.send_goal(goal)
+        rospy.sleep(2.5)
+        (trans1,rot1) = self.listener.lookupTransform('/WAIST_LINK0', '/LARM_LINK7', rospy.Time(0))
+        rospy.logwarn("tf_echo /WAIST_LINK0 /LARM_LINK7 %r %r"%(trans1,rot1))
+        larm.cancel_goal()
+        rospy.sleep(2.5)
+        (trans2,rot2) = self.listener.lookupTransform('/WAIST_LINK0', '/LARM_LINK7', rospy.Time(0))
+        rospy.logwarn("tf_echo /WAIST_LINK0 /LARM_LINK7 %r %r"%(trans2,rot2))
+        larm.wait_for_result()
+        rospy.logwarn("difference between two /LARM_LINK7 %r %r"%(array(trans1)-array(trans2),linalg.norm(array(trans1)-array(trans2))))
+        self.assertAlmostEqual(linalg.norm(array(trans1)-array(trans2)), 0, delta=0.1)
+
+    # https://github.com/start-jsk/rtmros_common/pull/765#issuecomment-392741195
+    def test_jta_overwrite_goal(self):
+        # for < kinetic
+        if os.environ['ROS_DISTRO'] >= 'kinetic' :
+            return True
+        from pr2_controllers_msgs.msg import JointTrajectoryAction, JointTrajectoryGoal
+        larm = actionlib.SimpleActionClient("/larm_controller/joint_trajectory_action", JointTrajectoryAction)
+        self.impl_test_jta_overwrite_goal(larm, JointTrajectoryGoal())
+
+    def test_fjta_overwrite_goal(self):
+        # for >= kinetic
+        if os.environ['ROS_DISTRO'] < 'kinetic' :
+            return True
+        from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
+        larm = actionlib.SimpleActionClient("/larm_controller/follow_joint_trajectory_action", FollowJointTrajectoryAction)
+        self.impl_test_jta_overwrite_goal(larm, FollowJointTrajectoryGoal())
+
+    def impl_test_jta_overwrite_goal(self, larm, goal):
+        larm.wait_for_server()
+
+        # initialize
+        goal.trajectory.header.stamp = rospy.get_rostime()
+        goal.trajectory.joint_names = ["LARM_SHOULDER_P","LARM_SHOULDER_R","LARM_SHOULDER_Y","LARM_ELBOW","LARM_WRIST_Y","LARM_WRIST_P"]
+        point = JointTrajectoryPoint()
+        point.positions = [0,0,0,0,0,0]
+        point.time_from_start = rospy.Duration(5.0)
+        goal.trajectory.points = [point]
+        larm.send_goal(goal)
+        larm.wait_for_result()
+
+        try:
+            self.listener.waitForTransform('/WAIST_LINK0', '/LARM_LINK7', rospy.Time(), rospy.Duration(120))
+        except tf.Exception:
+            self.assertTrue(None, "could not found tf from /WAIST_LINK0 to /LARM_LINK7")
+        (trans1,rot1) = self.listener.lookupTransform('/WAIST_LINK0', '/LARM_LINK7', rospy.Time(0))
+        rospy.logwarn("tf_echo /WAIST_LINK0 /LARM_LINK7 %r %r"%(trans1,rot1))
+
+        point1 = JointTrajectoryPoint()
+        point2 = JointTrajectoryPoint()
+        point3 = JointTrajectoryPoint()
+        point4 = JointTrajectoryPoint()
+        # one point trajectory (:angle-vector) -> one point trajectory (:angle-vector)
+        rospy.logwarn("one point trajectory -> one point trajectory")
+        ## first point
+        point1.positions = [ x * math.pi / 180.0 for x in [20,20,20,20,20,20] ]
+        point1.time_from_start = rospy.Duration(5.0)
+        ## second point
+        point2.positions = [0,0,0,0,0,0]
+        point2.time_from_start = rospy.Duration(2.5)
+        ## execution
+        self.jta_overwrite_goal_template(larm, goal, trans1, [point1], [point2])
+
+        # hrpsys 315.16.0 (having https://github.com/fkanehiro/hrpsys-base/pull/1237) is needed for the following tests to pass
+        # # one point trajectory (:angle-vector) -> two points trajectory (:angle-vector-sequence)
+        # rospy.logwarn("one point trajectory -> two points trajectory")
+        # ## first point
+        # point1.positions = [ x * math.pi / 180.0 for x in [20,20,20,20,20,20] ]
+        # point1.time_from_start = rospy.Duration(5.0)
+        # ## second point
+        # point2.positions = [ x * math.pi / 180.0 for x in [5,5,5,5,5,5] ]
+        # point2.time_from_start = rospy.Duration(1.25)
+        # ## third point
+        # point3.positions = [0,0,0,0,0,0]
+        # point3.time_from_start = rospy.Duration(2.5)
+        # ## execution
+        # self.jta_overwrite_goal_template(larm, goal, trans1, [point1], [point2, point3])
+
+        # # two points trajectory (:angle-vector-sequence) -> one point trajectory (:angle-vector)
+        # rospy.logwarn("two points trajectory -> one point trajectory")
+        # ## first point
+        # point1.positions = [ x * math.pi / 180.0 for x in [10,10,10,10,10,10] ]
+        # point1.time_from_start = rospy.Duration(2.5)
+        # ## second point
+        # point2.positions = [ x * math.pi / 180.0 for x in [20,20,20,20,20,20] ]
+        # point2.time_from_start = rospy.Duration(5.0)
+        # ## third point
+        # point3.positions = [0,0,0,0,0,0]
+        # point3.time_from_start = rospy.Duration(2.5)
+        # ## execution
+        # self.jta_overwrite_goal_template(larm, goal, trans1, [point1, point2], [point3])
+
+        # # two points trajectory (:angle-vector-sequence) -> two points trajectory (:angle-vector-sequence)
+        # rospy.logwarn("two points trajectory -> two points trajectory")
+        # ## first point
+        # point1.positions = [ x * math.pi / 180.0 for x in [10,10,10,10,10,10] ]
+        # point1.time_from_start = rospy.Duration(2.5)
+        # ## second point
+        # point2.positions = [ x * math.pi / 180.0 for x in [20,20,20,20,20,20] ]
+        # point2.time_from_start = rospy.Duration(5.0)
+        # ## third point
+        # point3.positions = [ x * math.pi / 180.0 for x in [5,5,5,5,5,5] ]
+        # point3.time_from_start = rospy.Duration(1.25)
+        # ## fourth point
+        # point4.positions = [0,0,0,0,0,0]
+        # point4.time_from_start = rospy.Duration(2.5)
+        # ## execution
+        # self.jta_overwrite_goal_template(larm, goal, trans1, [point1, point2], [point3, point4])
+
+    def jta_overwrite_goal_template(self, larm, goal, trans1, points1, points2):
+        # send first goal
+        goal.trajectory.header.stamp = rospy.get_rostime()
+        goal.trajectory.points = points1
+        larm.send_goal(goal)
+        rospy.sleep(2.5)
+        # send second goal
+        goal.trajectory.header.stamp = rospy.get_rostime()
+        goal.trajectory.points = points2
+        larm.send_goal(goal)
+        # check robot motion after it is overwritten
+        jt_pos1 = rospy.wait_for_message('/joint_states', JointState)
+        rospy.logwarn("joint position just after sending second goal: %r"%(array(jt_pos1.position)))
+        rospy.sleep(0.2)
+        jt_pos2 = rospy.wait_for_message('/joint_states', JointState)
+        rospy.logwarn("joint position 0.2 sec after sending second goal: %r"%(array(jt_pos2.position)))
+        rospy.sleep(2.3)
+        (trans2,rot2) = self.listener.lookupTransform('/WAIST_LINK0', '/LARM_LINK7', rospy.Time(0))
+        rospy.logwarn("tf_echo /WAIST_LINK0 /LARM_LINK7 %r %r"%(trans2,rot2))
+        larm.wait_for_result()
+        rospy.logwarn("difference between two joint positions %r"%(array(jt_pos2.position)-array(jt_pos1.position)))
+        ## if robot suddenly stops when goal is overwritten, joint position immediately starts to decrease (heading for new goal).
+        ## joint_states includes unchanged hand joints, so using assertGreaterEqual instead of assertGreater is necessary.
+        for x in array(jt_pos2.position)-array(jt_pos1.position):
+            self.assertGreaterEqual(x, 0)
+        rospy.logwarn("difference between two /LARM_LINK7 %r %r"%(array(trans1)-array(trans2),linalg.norm(array(trans1)-array(trans2))))
+        self.assertAlmostEqual(linalg.norm(array(trans1)-array(trans2)), 0, delta=0.1)
 
 
 #unittest.main()

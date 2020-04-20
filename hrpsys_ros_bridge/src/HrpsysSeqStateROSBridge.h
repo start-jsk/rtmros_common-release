@@ -75,6 +75,7 @@ class HrpsysSeqStateROSBridge  : public HrpsysSeqStateROSBridgeImpl
 
   coil::Mutex m_mutex;
   coil::TimeMeasure tm;
+  sensor_msgs::JointState prev_joint_state;
 
   std::string nameserver;
   std::string rootlink_name;
@@ -87,6 +88,7 @@ class HrpsysSeqStateROSBridge  : public HrpsysSeqStateROSBridgeImpl
   void clock_cb(const rosgraph_msgs::ClockPtr& str) {};
 
   bool follow_action_initialized;
+  ros::Time traj_start_tm;
 
   boost::mutex tf_mutex;
   double tf_rate;

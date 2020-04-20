@@ -102,11 +102,11 @@ rtmbuild_genbridge()
 # pr2_controller_msgs is not catkinized
 string(RANDOM _random_string)
 
-rtmbuild_add_executable(HrpsysSeqStateROSBridge src/HrpsysSeqStateROSBridgeImpl.cpp src/HrpsysSeqStateROSBridge.cpp src/HrpsysSeqStateROSBridgeComp.cpp)
+rtmbuild_add_executable(HrpsysSeqStateROSBridge src/HrpsysSeqStateROSBridgeImpl.cpp src/HrpsysSeqStateROSBridge.cpp src/HrpsysSeqStateROSBridgeComp.cpp src/HrpsysROSBridgeUtil.cpp)
 rtmbuild_add_executable(ImageSensorROSBridge src/ImageSensorROSBridge.cpp src/ImageSensorROSBridgeComp.cpp)
 rtmbuild_add_executable(RangeSensorROSBridge src/RangeSensorROSBridge.cpp src/RangeSensorROSBridgeComp.cpp)
 rtmbuild_add_executable(PointCloudROSBridge src/PointCloudROSBridge.cpp src/PointCloudROSBridgeComp.cpp)
-rtmbuild_add_executable(HrpsysJointTrajectoryBridge src/HrpsysJointTrajectoryBridge.cpp src/HrpsysJointTrajectoryBridgeComp.cpp)
+rtmbuild_add_executable(HrpsysJointTrajectoryBridge src/HrpsysJointTrajectoryBridge.cpp src/HrpsysJointTrajectoryBridgeComp.cpp src/HrpsysROSBridgeUtil.cpp)
 
 install(DIRECTORY launch euslisp srv idl scripts models test cmake
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
@@ -248,18 +248,22 @@ file(WRITE models/SampleRobot_controller_config.yaml
       - LLEG_ANKLE_R
 ")
 
-add_rostest(test/test-samplerobot.test)
-if (NOT $ENV{ROS_DISTRO} STREQUAL "hydro")
-  add_rostest(test/test-samplerobot-hcf.launch) # hydro-deb does not work with --unstable-rtc
+# stop other tests when euslisp test is commanded, because euslisp test takes much time
+if (NOT ("true" STREQUAL "$ENV{IS_EUSLISP_TRAVIS_TEST}"))
+  add_rostest(test/test-samplerobot.test)
+  if (NOT $ENV{ROS_DISTRO} STREQUAL "hydro")
+    add_rostest(test/test-samplerobot-hcf.launch) # hydro-deb does not work with --unstable-rtc
+  endif()
+  add_rostest(test/test-pa10.test)
+  add_rostest(test/test-import-python.test)
 endif()
-add_rostest(test/test-pa10.test)
-add_rostest(test/test-import-python.test)
 
 # call catkin depends
 find_package(catkin COMPONENTS roseus  QUIET)
 if(roseus_FOUND)
   if ("true" STREQUAL "$ENV{IS_EUSLISP_TRAVIS_TEST}")
     message("Execute rostest for euslisp unittest")
+    add_rostest(test/test-euslisp-without-ros-bridge.launch)
     add_rostest(test/hrpsys-samples/test_samplerobot_euslisp_unittests.launch)
   else()
     generate_eusdoc(euslisp/rtm-ros-robot-interface.l)
