@@ -1,3 +1,33 @@
+## rtmros_common (melodic) - 1.4.3-1
+
+The packages in the `rtmros_common` repository were released into the `melodic` distro by running `/usr/bin/bloom-release rtmros_common --track melodic --rosdistro melodic` on `Mon, 20 Apr 2020 08:29:03 -0000`
+
+These packages were released:
+- `hrpsys_ros_bridge`
+- `hrpsys_tools`
+- `openrtm_ros_bridge`
+- `openrtm_tools`
+- `rosnode_rtc`
+- `rtmbuild`
+- `rtmros_common`
+
+Version of package(s) in repository `rtmros_common`:
+
+- upstream repository: https://github.com/start-jsk/rtmros_common.git
+- release repository: unknown
+- rosdistro version: `null`
+- old version: `null`
+- new version: `1.4.3-1`
+
+Versions of tools used:
+
+- bloom version: `0.9.0`
+- catkin_pkg version: `0.4.16`
+- rosdep version: `0.18.0`
+- rosdistro version: `0.8.0`
+- vcstools version: `0.1.42`
+
+
 ## rtmros_common (kinetic) - 1.4.2-0
 
 The packages in the `rtmros_common` repository were released into the `kinetic` distro by running `/usr/bin/bloom-release rtmros_common --track kinetic --rosdistro kinetic` on `Fri, 22 Dec 2017 04:23:20 -0000`
