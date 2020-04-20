@@ -1,0 +1,13 @@
+Source: ros-melodic-hrpsys-ros-bridge
+Section: misc
+Priority: optional
+Maintainer: Kei Okada <k-okada@jsk.t.u-tokyo.ac.jp>
+Build-Depends: debhelper (>= 9.0.0), git, hostname, net-tools, pkg-config, procps, python-rosdep, ros-melodic-actionlib, ros-melodic-angles, ros-melodic-camera-info-manager, ros-melodic-catkin, ros-melodic-collada-urdf, ros-melodic-control-msgs, ros-melodic-diagnostic-aggregator, ros-melodic-diagnostic-msgs, ros-melodic-dynamic-reconfigure, ros-melodic-euscollada, ros-melodic-geometry-msgs, ros-melodic-hrpsys (>= 315.3.1), ros-melodic-hrpsys-tools, ros-melodic-image-transport, ros-melodic-message-generation, ros-melodic-mk, ros-melodic-nav-msgs, ros-melodic-pr2-controllers-msgs, ros-melodic-pr2-msgs, ros-melodic-robot-pose-ekf, ros-melodic-robot-state-publisher, ros-melodic-rosbuild, ros-melodic-roscpp, ros-melodic-roslang, ros-melodic-rosnode, ros-melodic-rostest, ros-melodic-rqt-gui, ros-melodic-rqt-gui-py, ros-melodic-rqt-robot-dashboard, ros-melodic-rqt-robot-monitor, ros-melodic-rtmbuild, ros-melodic-sensor-msgs, ros-melodic-tf, ros-melodic-visualization-msgs, subversion
+Homepage: http://wiki.ros.org/hrpsys_ros_bridge
+Standards-Version: 3.9.2
+
+Package: ros-melodic-hrpsys-ros-bridge
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ipython, python-psutil, ros-melodic-actionlib, ros-melodic-camera-info-manager, ros-melodic-collada-urdf, ros-melodic-control-msgs, ros-melodic-diagnostic-aggregator, ros-melodic-diagnostic-msgs, ros-melodic-dynamic-reconfigure, ros-melodic-geometry-msgs, ros-melodic-hrpsys, ros-melodic-hrpsys-tools, ros-melodic-image-transport, ros-melodic-nav-msgs, ros-melodic-pr2-controllers-msgs, ros-melodic-pr2-msgs, ros-melodic-robot-pose-ekf, ros-melodic-robot-state-publisher, ros-melodic-roscpp, ros-melodic-rosnode, ros-melodic-rostest, ros-melodic-rqt-gui, ros-melodic-rqt-gui-py, ros-melodic-rqt-robot-dashboard, ros-melodic-rqt-robot-monitor, ros-melodic-rtmbuild, ros-melodic-sensor-msgs, ros-melodic-tf, ros-melodic-visualization-msgs
+Description: hrpsys_ros_bridge package provides basic functionalities to bind hrpsys, a OpenRTM-based controller, and ROS.
+ By using this package, you can write your ROS packages that communicate with your non-ROS robots that run on hrpsys. For communicating with the robots that run on OpenRTM without hrpsys, you can use openrtm_ros_bridge package.
